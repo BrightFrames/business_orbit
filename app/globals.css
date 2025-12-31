@@ -1,0 +1,279 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Universal cursor pointer for all buttons */
+button {
+  cursor: pointer;
+}
+
+/* Custom responsive utilities for extra small screens */
+@media (max-width: 375px) {
+  .xs\:text-xs { font-size: 0.75rem; }
+  .xs\:px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .xs\:py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+  .xs\:gap-1 { gap: 0.25rem; }
+  .xs\:space-x-1 > :not([hidden]) ~ :not([hidden]) { margin-left: 0.25rem; }
+  .xs\:space-y-1 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.25rem; }
+}
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Enhanced color system with more sophisticated grays and subtle accent */
+  --background: oklch(1 0 0); /* Pure white */
+  --foreground: oklch(0.15 0 0); /* Rich black with slight warmth */
+  --card: oklch(0.99 0 0); /* Crisp white cards with subtle distinction */
+  --card-foreground: oklch(0.15 0 0); /* Rich black text on cards */
+  --popover: oklch(1 0 0); /* White popover background */
+  --popover-foreground: oklch(0.15 0 0); /* Rich black popover text */
+  --primary: oklch(0.15 0 0); /* Rich black primary buttons */
+  --primary-foreground: oklch(1 0 0); /* Pure white text on primary buttons */
+  --secondary: oklch(0.97 0 0); /* Sophisticated light gray secondary */
+  --secondary-foreground: oklch(0.15 0 0); /* Rich black text on secondary */
+  --muted: oklch(0.96 0 0); /* Refined muted background */
+  --muted-foreground: oklch(0.45 0 0); /* Professional gray muted text */
+  --accent: oklch(0.94 0 0); /* Subtle accent with warmth */
+  --accent-foreground: oklch(0.15 0 0); /* Rich black accent text */
+  --destructive: oklch(0.55 0.15 15); /* Refined red for destructive actions */
+  --destructive-foreground: oklch(1 0 0); /* White text on destructive */
+  --border: oklch(0.92 0 0); /* Sophisticated border color */
+  --input: oklch(0.99 0 0); /* Clean input background */
+  --ring: oklch(0.15 0 0 / 0.15); /* Subtle focus ring */
+  --chart-1: oklch(0.15 0 0); /* Rich black chart color */
+  --chart-2: oklch(0.65 0 0); /* Professional gray chart color */
+  --chart-3: oklch(0.45 0 0); /* Medium gray chart color */
+  --chart-4: oklch(0.85 0 0); /* Light gray chart color */
+  --chart-5: oklch(0.25 0 0); /* Dark gray chart color */
+  --radius: 0.75rem; /* Refined border radius */
+  --sidebar: oklch(0.98 0 0); /* Clean sidebar background */
+  --sidebar-foreground: oklch(0.15 0 0); /* Rich black sidebar text */
+  --sidebar-primary: oklch(0.15 0 0); /* Rich black sidebar primary */
+  --sidebar-primary-foreground: oklch(1 0 0); /* White sidebar primary text */
+  --sidebar-accent: oklch(0.94 0 0); /* Subtle sidebar accent */
+  --sidebar-accent-foreground: oklch(0.15 0 0); /* Rich black sidebar accent text */
+  --sidebar-border: oklch(0.92 0 0); /* Sophisticated sidebar border */
+  --sidebar-ring: oklch(0.15 0 0 / 0.15); /* Subtle sidebar focus ring */
+
+  /* Added professional shadow system */
+  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.1), 0 4px 6px -4px oklch(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px oklch(0 0 0 / 0.1), 0 8px 10px -6px oklch(0 0 0 / 0.1);
+}
+
+.dark {
+  /* Enhanced dark mode with richer blacks and sophisticated grays */
+  --background: oklch(0.05 0 0); /* Rich dark background */
+  --foreground: oklch(0.95 0 0); /* Warm white text */
+  --card: oklch(0.08 0 0); /* Sophisticated dark cards */
+  --card-foreground: oklch(0.95 0 0); /* Warm white text on cards */
+  --popover: oklch(0.05 0 0); /* Rich dark popover background */
+  --popover-foreground: oklch(0.95 0 0); /* Warm white popover text */
+  --primary: oklch(0.95 0 0); /* Warm white primary buttons in dark mode */
+  --primary-foreground: oklch(0.05 0 0); /* Rich dark text on primary buttons */
+  --secondary: oklch(0.12 0 0); /* Professional dark gray secondary */
+  --secondary-foreground: oklch(0.95 0 0); /* Warm white text on secondary */
+  --muted: oklch(0.1 0 0); /* Refined dark muted background */
+  --muted-foreground: oklch(0.65 0 0); /* Professional light gray muted text */
+  --accent: oklch(0.15 0 0); /* Sophisticated dark accent */
+  --accent-foreground: oklch(0.95 0 0); /* Warm white accent text */
+  --destructive: oklch(0.55 0.15 15); /* Refined red for destructive actions */
+  --destructive-foreground: oklch(0.95 0 0); /* Warm white text on destructive */
+  --border: oklch(0.18 0 0); /* Professional dark border */
+  --input: oklch(0.08 0 0); /* Clean dark input background */
+  --ring: oklch(0.95 0 0 / 0.15); /* Subtle light focus ring */
+  --chart-1: oklch(0.95 0 0); /* Warm white chart color */
+  --chart-2: oklch(0.75 0 0); /* Light gray chart color */
+  --chart-3: oklch(0.55 0 0); /* Medium gray chart color */
+  --chart-4: oklch(0.35 0 0); /* Dark gray chart color */
+  --chart-5: oklch(0.15 0 0); /* Very dark gray chart color */
+  --sidebar: oklch(0.08 0 0); /* Sophisticated dark sidebar background */
+  --sidebar-foreground: oklch(0.95 0 0); /* Warm white sidebar text */
+  --sidebar-primary: oklch(0.95 0 0); /* Warm white sidebar primary */
+  --sidebar-primary-foreground: oklch(0.05 0 0); /* Rich dark sidebar primary text */
+  --sidebar-accent: oklch(0.15 0 0); /* Sophisticated dark sidebar accent */
+  --sidebar-accent-foreground: oklch(0.95 0 0); /* Warm white sidebar accent text */
+  --sidebar-border: oklch(0.18 0 0); /* Professional dark sidebar border */
+  --sidebar-ring: oklch(0.95 0 0 / 0.15); /* Subtle light sidebar focus ring */
+
+  /* Enhanced dark mode shadows */
+  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.4), 0 2px 4px -2px oklch(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.4), 0 4px 6px -4px oklch(0 0 0 / 0.4);
+  --shadow-xl: 0 20px 25px -5px oklch(0 0 0 / 0.4), 0 8px 10px -6px oklch(0 0 0 / 0.4);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Added shadow utilities to theme */
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow-md);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    /* Enhanced typography with better line height and letter spacing */
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+  }
+
+  /* Added professional typography scale */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold tracking-tight;
+    line-height: 1.2;
+  }
+
+  h1 {
+    @apply text-4xl lg:text-5xl;
+  }
+  h2 {
+    @apply text-3xl lg:text-4xl;
+  }
+  h3 {
+    @apply text-2xl lg:text-3xl;
+  }
+  h4 {
+    @apply text-xl lg:text-2xl;
+  }
+  h5 {
+    @apply text-lg lg:text-xl;
+  }
+  h6 {
+    @apply text-base lg:text-lg;
+  }
+
+  /* Enhanced focus states for accessibility */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  /* Smooth transitions for better UX */
+  * {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow,
+      transform, filter, backdrop-filter;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+}
+
+/* Added professional utility classes */
+@layer utilities {
+  .shadow-soft {
+    box-shadow: var(--shadow-sm);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-md);
+  }
+
+  .shadow-floating {
+    box-shadow: var(--shadow-lg);
+  }
+
+  .shadow-modal {
+    box-shadow: var(--shadow-xl);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .gradient-border {
+    position: relative;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--border), transparent, var(--border));
+    border-radius: inherit;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: xor;
+  }
+
+  /* Custom select dropdown styling to override browser defaults */
+  select {
+    color: black !important;
+    background-color: white !important;
+  }
+
+  select option {
+    color: black !important;
+    background-color: white !important;
+  }
+
+  select option:hover {
+    color: white !important;
+    background-color: black !important;
+  }
+
+  select option:checked {
+    color: white !important;
+    background-color: black !important;
+  }
+
+  select option:checked:hover {
+    color: white !important;
+    background-color: black !important;
+  }
+
+  select:focus {
+    color: black !important;
+    background-color: white !important;
+  }
+
+  select:focus option:hover {
+    color: white !important;
+    background-color: black !important;
+  }
+}
