@@ -1,9 +1,10 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 
-// Load local env variables only during local development (not on Vercel/build)
+// Load env variables
 if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: '.env.local' });
+  dotenv.config({ path: '.env' });
 }
 
 // Only log database URL issues in development, not during build
@@ -30,8 +31,8 @@ declare global {
 
 // Detect if we're in a Next.js build context - be VERY aggressive here
 // During build, Next.js analyzes routes which can trigger imports
-const isBuildTime = 
-  process.env.NEXT_PHASE === 'phase-production-build' || 
+const isBuildTime =
+  process.env.NEXT_PHASE === 'phase-production-build' ||
   process.env.NEXT_PHASE === 'phase-development-build' ||
   process.env.NEXT_PHASE?.includes('build') ||
   process.env.npm_lifecycle_event === 'build' ||
@@ -52,13 +53,14 @@ const pool = global.__PG_POOL__ ?? (
   !isBuildTime && databaseUrl ? new Pool({
     connectionString: databaseUrl,
     ssl: shouldUseSsl || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    // Keep dev pool small to avoid exhausting server connection slots during HMR
-    max: process.env.NODE_ENV === 'production' ? 20 : 5,
-    min: 0, // Always start with 0 connections - lazy connection
+    // Supabase has connection limits, so we adjust based on environment
+    max: databaseUrl.includes('supabase')
+      ? (process.env.NODE_ENV === 'production' ? 15 : 3)
+      : (process.env.NODE_ENV === 'production' ? 20 : 5),
+    min: 0,
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 15_000, // Increased from 5s to 15s
+    connectionTimeoutMillis: 20_000, // Increased for remote Supabase connections
     maxUses: 7_500,
-    // Keep TCP connection alive to reduce ECONNRESET in some environments
     keepAlive: true,
     keepAliveInitialDelayMillis: 30_000,
   }) : null
@@ -85,7 +87,7 @@ const testConnection = async (retries = process.env.NODE_ENV === 'production' ? 
   if (!pool) {
     return;
   }
-  
+
   for (let i = 0; i < retries; i++) {
     try {
       const result = await pool.query('SELECT NOW() as current_time, version() as version');
@@ -102,10 +104,10 @@ const testConnection = async (retries = process.env.NODE_ENV === 'production' ? 
 
 // NEVER test connection during build time - this is critical
 // Only test connection in development runtime, not during builds or CI
-const shouldTestConnection = 
+const shouldTestConnection =
   !isBuildTime &&
-  process.env.NODE_ENV !== 'test' && 
-  process.env.VERCEL !== '1' && 
+  process.env.NODE_ENV !== 'test' &&
+  process.env.VERCEL !== '1' &&
   process.env.CI !== 'true' &&
   process.env.NODE_ENV === 'development';
 
