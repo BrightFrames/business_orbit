@@ -264,6 +264,7 @@
     "start": "next start",
     "chat:dev": "tsx server/chat-server.ts",
     "db:setup": "tsx lib/database/setup.ts",
+    "db:seed": "tsx lib/database/seed.ts",
     "admin:setup": "tsx lib/database/setup-admin.ts",
     "migrate:proposals": "tsx lib/database/run-migration.ts",
     "migrate:host-id": "tsx lib/database/migrate-host-id.ts",
