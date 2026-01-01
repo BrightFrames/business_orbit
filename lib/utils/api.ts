@@ -12,15 +12,15 @@ export async function safeApiCall<T>(
 ): Promise<ApiResponse<T>> {
   try {
     const response = await apiCall();
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return {
         success: false,
-        error: errorData.error || errorMessage
+        error: errorData.error || errorData.message || errorMessage
       };
     }
-    
+
     const data = await response.json();
     return {
       success: true,
@@ -40,7 +40,7 @@ export function debounce<T extends (...args: any[]) => any>(
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout;
-  
+
   return (...args: Parameters<T>) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);

@@ -184,13 +184,13 @@ export default function PostCard({ onPostCreated }: PostCardProps) {
 
   const handlePost = async () => {
     if (!content.trim()) return;
-    
+
     // Check daily limit before proceeding
     // if (dailyStatus && !dailyStatus.canPost) {
     //   setError('Daily post limit reached. You can only post once per day to encourage thoughtful content.');
     //   return;
     // }
-    
+
     setIsSubmitting(true);
     setError("");
     try {
@@ -244,10 +244,10 @@ export default function PostCard({ onPostCreated }: PostCardProps) {
         if (videoInputRef.current) {
           videoInputRef.current.value = "";
         }
-        
+
         // Refresh daily status
         // await fetchDailyStatus();
-        
+
         // Notify parent component
         if (onPostCreated) {
           onPostCreated();
@@ -258,7 +258,7 @@ export default function PostCard({ onPostCreated }: PostCardProps) {
         //   setError((result.error as any).error || 'Daily post limit reached.');
         //   await fetchDailyStatus(); // Refresh status
         // } else {
-          setError(result.error || 'Failed to create post');
+        setError(result.error || 'Failed to create post');
         // }
       }
     } catch (error: any) {
@@ -271,7 +271,7 @@ export default function PostCard({ onPostCreated }: PostCardProps) {
 
   const handleSchedule = async () => {
     if (!content.trim() || !scheduledAt) return;
-    
+
     setIsSubmitting(true);
     setError("");
     try {
@@ -325,10 +325,10 @@ export default function PostCard({ onPostCreated }: PostCardProps) {
         if (videoInputRef.current) {
           videoInputRef.current.value = "";
         }
-        
+
         // Refresh daily status
         // await fetchDailyStatus();
-        
+
         // Notify parent component
         if (onPostCreated) {
           onPostCreated();
@@ -339,7 +339,7 @@ export default function PostCard({ onPostCreated }: PostCardProps) {
         //   setError((result.error as any).error || 'Daily post limit reached.');
         //   await fetchDailyStatus(); // Refresh status
         // } else {
-          setError(result.error || 'Failed to schedule post');
+        setError(result.error || 'Failed to schedule post');
         // }
       }
     } catch (error: any) {
@@ -357,7 +357,7 @@ export default function PostCard({ onPostCreated }: PostCardProps) {
     const year = date.getFullYear();
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
-    
+
     return `${day}-${month}-${year} ${hours}:${minutes}`;
   };
 
@@ -367,22 +367,20 @@ export default function PostCard({ onPostCreated }: PostCardProps) {
       <div className="flex justify-start gap-3">
         <Button
           onClick={handlePostClick}
-          className={`px-6 ${
-            activeButton === 'post' 
-              ? 'bg-black text-white hover:bg-gray-800' 
+          className={`px-6 ${activeButton === 'post'
+              ? 'bg-black text-white hover:bg-gray-800'
               : 'bg-white text-black border border-gray-300 hover:bg-gray-50'
-          }`}
+            }`}
         >
           <PlusCircle className="h-4 w-4 mr-2" />
           Post
         </Button>
         <Button
           onClick={handleScheduleClick}
-          className={`px-6 ${
-            activeButton === 'schedule' 
-              ? 'bg-black text-white hover:bg-gray-800' 
+          className={`px-6 ${activeButton === 'schedule'
+              ? 'bg-black text-white hover:bg-gray-800'
               : 'bg-white text-black border border-gray-300 hover:bg-gray-50'
-          }`}
+            }`}
         >
           <Calendar className="h-4 w-4 mr-2" />
           Schedule
@@ -424,7 +422,7 @@ export default function PostCard({ onPostCreated }: PostCardProps) {
                 <Image className="h-5 w-5" />
                 <span className="text-sm">Image</span>
               </Button>
-              
+
               <Button
                 type="button"
                 variant="ghost"
@@ -529,7 +527,7 @@ export function DisplayPostCard({ author, content, timestamp, engagement, isLike
           <div className="w-12 h-12 bg-gradient-to-br from-muted to-muted/50 rounded-full flex items-center justify-center font-bold text-foreground shadow-soft border border-border/20">
             {author.avatar}
           </div>
-          {author.rewardScore >= 90 && (
+          {author.rewardScore >= 80 && (
             <div className="absolute -top-1 -right-1 w-5 h-5 bg-foreground rounded-full flex items-center justify-center">
               <Sparkles className="w-3 h-3 text-background" />
             </div>
@@ -563,9 +561,8 @@ export function DisplayPostCard({ author, content, timestamp, engagement, isLike
               <Button
                 variant="ghost"
                 size="sm"
-                className={`p-2 hover:bg-accent/50 transition-all duration-200 ${
-                  liked ? "text-red-500 hover:text-red-600" : "hover:text-red-500"
-                }`}
+                className={`p-2 hover:bg-accent/50 transition-all duration-200 ${liked ? "text-red-500 hover:text-red-600" : "hover:text-red-500"
+                  }`}
                 onClick={handleLike}
               >
                 <Heart className={`w-4 h-4 mr-2 transition-all ${liked ? "fill-current scale-110" : ""}`} />
@@ -591,7 +588,7 @@ export function DisplayPostCard({ author, content, timestamp, engagement, isLike
 // Event Card Component (from post-card.tsx)
 export function EventCard({ title, host, date, time, location, attendees, isJoined = false }: EventCardProps) {
   const [joined, setJoined] = useState(isJoined)
-  
+
   // Update local state when prop changes
   useEffect(() => {
     setJoined(isJoined)
@@ -612,11 +609,10 @@ export function EventCard({ title, host, date, time, location, attendees, isJoin
           variant={joined ? "secondary" : "default"}
           size="sm"
           onClick={() => setJoined(!joined)}
-          className={`font-semibold transition-all duration-200 ${
-            joined
+          className={`font-semibold transition-all duration-200 ${joined
               ? "bg-accent hover:bg-accent/80"
               : "bg-foreground hover:bg-foreground/90 shadow-soft hover:shadow-elevated"
-          }`}
+            }`}
         >
           {joined ? "✓ Registered" : "Join Event"}
         </Button>

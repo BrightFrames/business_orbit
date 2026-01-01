@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Calendar, Clock, MapPin, Users } from 'lucide-react'
@@ -27,6 +28,7 @@ interface UpcomingEventsCardProps {
 }
 
 export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCardProps) {
+  const router = useRouter()
   const { user } = useAuth()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,7 +42,7 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
         setError(null)
 
         const result = await safeApiCall(
-          () => fetch(`/api/events${user ? `?userId=${user.id}` : ''}`, {
+          () => fetch(`/api/events`, {
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
@@ -52,7 +54,7 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
         if (result.success && result.data && Array.isArray(result.data)) {
           // The events API returns the events array directly
           const eventsData = result.data as any[]
-          
+
           // Filter for upcoming events and limit to 3
           const upcomingEvents = eventsData
             .filter((event: any) => {
@@ -78,7 +80,7 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
               host: event.host || 'Business Orbit',
               attendees_count: event.rsvp_count || 0,
               max_attendees: event.max_attendees,
-              is_joined: event.is_registered || false,
+              is_joined: event.is_registered === true || event.is_registered === 1 || event.is_registered === 'true' || event.is_registered === 't' || (typeof event.is_registered === 'number' && event.is_registered > 0),
               event_type: event.event_type
             }))
           setEvents(upcomingEvents)
@@ -99,7 +101,7 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
   const handleJoinEvent = async (eventId: string, eventTitle: string) => {
     try {
       setJoining(prev => new Set(prev).add(eventId))
-      
+
       const result = await safeApiCall(
         () => fetch(`/api/events/${eventId}/rsvp`, {
           method: 'POST',
@@ -111,11 +113,11 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
         }),
         'Failed to join event'
       )
-      
+
       if (result.success) {
         // Update the event status
-        setEvents(prev => prev.map(event => 
-          event.id === eventId 
+        setEvents(prev => prev.map(event =>
+          event.id === eventId
             ? { ...event, is_joined: true, attendees_count: event.attendees_count + 1 }
             : event
         ))
@@ -140,7 +142,7 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
     const now = new Date()
     const diffTime = date.getTime() - now.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
+
     if (diffDays === 0) {
       return 'Today'
     } else if (diffDays === 1) {
@@ -148,9 +150,9 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
     } else if (diffDays < 7) {
       return `In ${diffDays} days`
     } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric' 
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
       })
     }
   }
@@ -221,23 +223,19 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
                   )}
                 </div>
               </div>
-              
+
               {!event.is_joined && (
                 <Button
                   size="sm"
                   variant="outline"
                   className="h-6 px-2 text-xs cursor-pointer"
-                  onClick={() => handleJoinEvent(event.id, event.title)}
+                  onClick={() => router.push(`/product/events/${event.id}/join`)}
                   disabled={joining.has(event.id)}
                 >
-                  {joining.has(event.id) ? (
-                    <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    'Join Event'
-                  )}
+                  Join Event
                 </Button>
               )}
-              
+
               {event.is_joined && (
                 <div className="text-xs text-green-600 font-medium">
                   ✓ Registered
@@ -247,6 +245,6 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
           ))
         )}
       </div>
-    </Card>
+    </Card >
   )
 }

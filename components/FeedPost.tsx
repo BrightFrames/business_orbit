@@ -49,7 +49,7 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
 
   const handleEngagement = async (type: 'like') => {
     if (!user) return;
-    
+
     setIsEngaging(true);
     try {
       const result = await safeApiCall(
@@ -72,7 +72,7 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
           setIsLiked(!isLiked);
           setLikes(prev => isLiked ? prev - 1 : prev + 1);
         }
-        
+
         if (onEngagementChange) {
           onEngagementChange();
         }
@@ -88,7 +88,7 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
+
     if (diffInHours < 1) {
       const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
       return `${diffInMinutes}m ago`;
@@ -106,7 +106,7 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
 
   const handleDeletePost = async () => {
     if (!user) return;
-    
+
     setIsDeleting(true);
     try {
       const result = await safeApiCall(
@@ -179,7 +179,7 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
       <div className="space-y-4">
         {/* User Info */}
         <div className="flex items-center gap-3">
-          <div 
+          <div
             className="relative cursor-pointer"
             onClick={() => {
               toast("This feature is enabled in Phase2/Version2", {
@@ -189,8 +189,8 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
           >
             <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
               {post.profile_photo_url ? (
-                <img 
-                  src={post.profile_photo_url} 
+                <img
+                  src={post.profile_photo_url}
                   alt={post.user_name}
                   className="w-12 h-12 rounded-full object-cover"
                 />
@@ -198,12 +198,14 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
                 getInitials(post.user_name)
               )}
             </div>
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-              <Sparkles className="h-2 w-2 text-white" />
-            </div>
+            {post.rewardScore && post.rewardScore >= 80 && (
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-foreground rounded-full flex items-center justify-center">
+                <Sparkles className="w-3 h-3 text-background" />
+              </div>
+            )}
           </div>
-          
-          <div 
+
+          <div
             className="flex-1 cursor-pointer"
             onClick={() => {
               toast("This feature is enabled in Phase2/Version2", {
@@ -214,7 +216,7 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-gray-900">{post.user_name}</h3>
               <div className="w-8 h-5 bg-gray-200 rounded-full flex items-center justify-center">
-                <span className="text-xs font-medium text-gray-600">92</span>
+                <span className="text-xs font-medium text-gray-600">85</span>
               </div>
             </div>
             <p className="text-sm text-gray-500">{post.profession || 'Professional'}</p>
@@ -232,7 +234,7 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
               >
                 <MoreVertical className="h-4 w-4 text-gray-500" />
               </Button>
-              
+
               {showMenu && (
                 <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
                   <button
@@ -259,8 +261,8 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
             {post.media.map((media, index) => (
               <div key={media.id || index} className="rounded-lg overflow-hidden">
                 {media.media_type === 'image' ? (
-                  <img 
-                    src={media.cloudinary_url} 
+                  <img
+                    src={media.cloudinary_url}
                     alt={media.file_name || 'Post image'}
                     className="w-full max-h-96 object-cover rounded-lg"
                     onError={(e) => {
@@ -268,17 +270,17 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
                     }}
                   />
                 ) : media.media_type === 'video' ? (
-                  <video 
-                    src={media.cloudinary_url} 
+                  <video
+                    src={media.cloudinary_url}
                     controls
                     className="w-full max-h-96 rounded-lg"
                   />
                 ) : (
                   <div className="p-4 bg-gray-100 rounded-lg">
                     <p className="text-sm text-gray-600">{media.file_name}</p>
-                    <a 
-                      href={media.cloudinary_url} 
-                      target="_blank" 
+                    <a
+                      href={media.cloudinary_url}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 text-sm"
                     >
@@ -305,14 +307,13 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
             size="sm"
             onClick={() => handleEngagement('like')}
             disabled={isEngaging}
-            className={`flex items-center gap-2 ${
-              isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
-            }`}
+            className={`flex items-center gap-2 ${isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+              }`}
           >
             <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
             <span>{likes}</span>
           </Button>
-          
+
           <Button
             variant="ghost"
             size="sm"
@@ -326,8 +327,8 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
 
         {/* Comments Section */}
         {showCommentsSection && (
-          <CommentsSection 
-            postId={post.id} 
+          <CommentsSection
+            postId={post.id}
             onCommentCountChange={handleCommentCountChange}
           />
         )}

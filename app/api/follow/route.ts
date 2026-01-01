@@ -13,29 +13,30 @@ export async function POST(request: NextRequest) {
     const { targetUserId, action } = await request.json()
 
     if (!targetUserId || !action) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'targetUserId and action are required' 
+      return NextResponse.json({
+        success: false,
+        error: 'targetUserId and action are required'
       }, { status: 400 })
     }
 
     if (action !== 'follow' && action !== 'unfollow') {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Action must be either follow or unfollow' 
+      return NextResponse.json({
+        success: false,
+        error: 'Action must be either follow or unfollow'
       }, { status: 400 })
     }
 
-    if (user.id === targetUserId) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Cannot follow yourself' 
+    const targetId = parseInt(String(targetUserId));
+
+    if (user.id === targetId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Cannot follow yourself'
       }, { status: 400 })
     }
 
     // Convert to integers to ensure proper data types
     const userId = parseInt(String(user.id))
-    const targetId = parseInt(String(targetUserId))
 
     // Check if target user exists
     const targetUser = await pool.query(
@@ -44,9 +45,9 @@ export async function POST(request: NextRequest) {
     )
 
     if (targetUser.rows.length === 0) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'User not found' 
+      return NextResponse.json({
+        success: false,
+        error: 'User not found'
       }, { status: 404 })
     }
 
@@ -58,9 +59,9 @@ export async function POST(request: NextRequest) {
       )
 
       if (existingFollow.rows.length > 0) {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Already following this user' 
+        return NextResponse.json({
+          success: false,
+          error: 'Already following this user'
         }, { status: 400 })
       }
 
@@ -73,14 +74,14 @@ export async function POST(request: NextRequest) {
       if (existingRequest.rows.length > 0) {
         const request = existingRequest.rows[0]
         if (request.status === 'pending') {
-          return NextResponse.json({ 
-            success: false, 
-            error: 'Follow request already sent' 
+          return NextResponse.json({
+            success: false,
+            error: 'Follow request already sent'
           }, { status: 400 })
         } else if (request.status === 'accepted') {
-          return NextResponse.json({ 
-            success: false, 
-            error: 'Already following this user' 
+          return NextResponse.json({
+            success: false,
+            error: 'Already following this user'
           }, { status: 400 })
         } else if (request.status === 'declined') {
           // Allow resending if previously declined
@@ -88,9 +89,9 @@ export async function POST(request: NextRequest) {
             'UPDATE follow_requests SET status = $1, updated_at = NOW() WHERE id = $2',
             ['pending', request.id]
           )
-          return NextResponse.json({ 
-            success: true, 
-            message: `Follow request sent to ${targetUser.rows[0].name}` 
+          return NextResponse.json({
+            success: true,
+            message: `Follow request sent to ${targetUser.rows[0].name}`
           })
         }
       }
@@ -101,9 +102,9 @@ export async function POST(request: NextRequest) {
         [userId, targetId, 'pending']
       )
 
-      return NextResponse.json({ 
-        success: true, 
-        message: `Follow request sent to ${targetUser.rows[0].name}` 
+      return NextResponse.json({
+        success: true,
+        message: `Follow request sent to ${targetUser.rows[0].name}`
       })
     } else {
       // Unfollow - remove from both tables
@@ -118,22 +119,22 @@ export async function POST(request: NextRequest) {
       )
 
       if (followResult.rowCount === 0 && requestResult.rowCount === 0) {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Not following this user' 
+        return NextResponse.json({
+          success: false,
+          error: 'Not following this user'
         }, { status: 400 })
       }
 
-      return NextResponse.json({ 
-        success: true, 
-        message: `Unfollowed ${targetUser.rows[0].name}` 
+      return NextResponse.json({
+        success: true,
+        message: `Unfollowed ${targetUser.rows[0].name}`
       })
     }
 
   } catch (error: any) {
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to process follow action' 
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to process follow action'
     }, { status: 500 })
   }
 }
@@ -153,7 +154,7 @@ export async function GET(request: NextRequest) {
     // If checking status for specific users
     if (checkStatus === 'true' && userIds) {
       const userIdArray = userIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
-      
+
       if (userIdArray.length === 0) {
         return NextResponse.json({ success: true, followStatus: {} })
       }
@@ -192,9 +193,9 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      return NextResponse.json({ 
-        success: true, 
-        followStatus 
+      return NextResponse.json({
+        success: true,
+        followStatus
       })
     }
 
@@ -213,16 +214,16 @@ export async function GET(request: NextRequest) {
       profilePhotoUrl: row.profile_photo_url
     }))
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       following,
-      count: following.length 
+      count: following.length
     })
 
   } catch (error: any) {
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to fetch following list' 
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch following list'
     }, { status: 500 })
   }
 }

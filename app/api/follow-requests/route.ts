@@ -14,16 +14,18 @@ export async function POST(request: NextRequest) {
     const { targetUserId } = await request.json()
 
     if (!targetUserId) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'targetUserId is required' 
+      return NextResponse.json({
+        success: false,
+        error: 'targetUserId is required'
       }, { status: 400 })
     }
 
-    if (user.id === targetUserId) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Cannot send follow request to yourself' 
+    const targetId = parseInt(String(targetUserId));
+
+    if (user.id === targetId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Cannot send follow request to yourself'
       }, { status: 400 })
     }
 
@@ -34,9 +36,9 @@ export async function POST(request: NextRequest) {
     )
 
     if (targetUser.rows.length === 0) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'User not found' 
+      return NextResponse.json({
+        success: false,
+        error: 'User not found'
       }, { status: 404 })
     }
 
@@ -47,9 +49,9 @@ export async function POST(request: NextRequest) {
     )
 
     if (existingFollow.rows.length > 0) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Already following this user' 
+      return NextResponse.json({
+        success: false,
+        error: 'Already following this user'
       }, { status: 400 })
     }
 
@@ -62,14 +64,14 @@ export async function POST(request: NextRequest) {
     if (existingRequest.rows.length > 0) {
       const request = existingRequest.rows[0]
       if (request.status === 'pending') {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Follow request already sent' 
+        return NextResponse.json({
+          success: false,
+          error: 'Follow request already sent'
         }, { status: 400 })
       } else if (request.status === 'accepted') {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Already following this user' 
+        return NextResponse.json({
+          success: false,
+          error: 'Already following this user'
         }, { status: 400 })
       } else if (request.status === 'declined') {
         // Allow resending if previously declined
@@ -77,9 +79,9 @@ export async function POST(request: NextRequest) {
           'UPDATE follow_requests SET status = $1, updated_at = NOW() WHERE id = $2',
           ['pending', request.id]
         )
-        return NextResponse.json({ 
-          success: true, 
-          message: `Follow request sent to ${targetUser.rows[0].name}` 
+        return NextResponse.json({
+          success: true,
+          message: `Follow request sent to ${targetUser.rows[0].name}`
         })
       }
     }
@@ -90,16 +92,16 @@ export async function POST(request: NextRequest) {
       [user.id, targetUserId, 'pending']
     )
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Follow request sent to ${targetUser.rows[0].name}` 
+    return NextResponse.json({
+      success: true,
+      message: `Follow request sent to ${targetUser.rows[0].name}`
     })
 
   } catch (error: any) {
     console.error('Error sending follow request:', error)
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to send follow request' 
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to send follow request'
     }, { status: 500 })
   }
 }
@@ -141,10 +143,10 @@ export async function GET(request: NextRequest) {
         createdAt: row.created_at
       }))
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         requests,
-        count: requests.length 
+        count: requests.length
       })
     } else {
       // Get sent follow requests
@@ -171,18 +173,18 @@ export async function GET(request: NextRequest) {
         createdAt: row.created_at
       }))
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         requests,
-        count: requests.length 
+        count: requests.length
       })
     }
 
   } catch (error: any) {
     console.error('Error fetching follow requests:', error)
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to fetch follow requests' 
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch follow requests'
     }, { status: 500 })
   }
 }

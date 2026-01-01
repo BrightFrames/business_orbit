@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all members with their chapter information grouped by user (excluding current user)
+    console.log(`[API/Members] User ID: ${user.id} (type: ${typeof user.id})`);
     const result = await pool.query(`
       SELECT 
         u.id,
@@ -44,16 +45,16 @@ export async function GET(request: NextRequest) {
       chapters: row.chapters || []
     }))
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       members,
-      total: members.length 
+      total: members.length
     })
 
   } catch (error: any) {
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to fetch members' 
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch members'
     }, { status: 500 })
   }
 }

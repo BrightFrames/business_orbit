@@ -16,7 +16,8 @@ export const setTokenCookie = (res: NextResponse, token: string): void => {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/'
   });
 };
 
@@ -33,7 +34,7 @@ export const authenticateToken = async (req: NextRequest) => {
       throw new Error('JWT_SECRET environment variable is not set');
     }
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as { userId: number };
-    
+
     // Get user from database
     const result = await pool.query(
       'SELECT id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, created_at, is_admin FROM users WHERE id = $1',

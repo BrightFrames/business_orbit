@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/config/database'; 
+import pool from '@/lib/config/database';
+import { getUserFromToken } from "@/lib/utils/auth";
 
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const searchQuery = url.searchParams.get('search') || '';
     const dateQuery = url.searchParams.get('date') || '';
-    const userId = url.searchParams.get('userId');
     const limit = parseInt(url.searchParams.get('limit') || '10');
+
+    // Automatically detect user from token
+    const user = await getUserFromToken(req);
+    const userId = user?.id;
 
     // Build SELECT with RSVP count and optional is_registered flag
     let queryText = `
@@ -29,7 +33,7 @@ export async function GET(req: NextRequest) {
     `;
     const queryParams: any[] = [];
     if (userId) {
-      queryParams.push(Number(userId));
+      queryParams.push(userId);
     }
 
     if (searchQuery) {
@@ -51,7 +55,7 @@ export async function GET(req: NextRequest) {
     queryParams.push(limit);
 
     const result = await pool.query(queryText, queryParams);
-    
+
     return NextResponse.json(result.rows, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: 'Failed to fetch events', details: err.message }, { status: 500 });

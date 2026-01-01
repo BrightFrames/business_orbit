@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { UserPlus, Users } from 'lucide-react'
 import { safeApiCall } from '@/lib/utils/api'
 import toast from 'react-hot-toast'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface SuggestedConnection {
   id: number
@@ -30,6 +31,7 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
   const [error, setError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState<Set<number>>(new Set())
   const [followStatus, setFollowStatus] = useState<Map<number, 'following' | 'pending' | 'not-following'>>(new Map())
+  const { user } = useAuth()
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -48,21 +50,23 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
           'Failed to fetch community members'
         )
 
-         if (result.success && result.data) {
-           const membersData = result.data as any
-           const members = membersData.members || []
-           
-           // Show all community members
-           const suggested = members.map((member: any) => ({
-             id: member.id,
-             name: member.name,
-             profile_photo_url: member.profilePhotoUrl,
-             email: member.email,
-             chapters: member.chapters || [],
-             userJoinedAt: member.userJoinedAt
-           }))
-           
-           setSuggestions(suggested)
+        if (result.success && result.data) {
+          const membersData = result.data as any
+          const members = membersData.members || []
+
+          // Filter out current user if they happen to be in the list
+          const suggested = members
+            .filter((member: any) => user ? member.id !== user.id : true)
+            .map((member: any) => ({
+              id: member.id,
+              name: member.name,
+              profile_photo_url: member.profilePhotoUrl,
+              email: member.email,
+              chapters: member.chapters || [],
+              userJoinedAt: member.userJoinedAt
+            }))
+
+          setSuggestions(suggested)
 
           // Fetch follow status for these users
           if (suggested.length > 0) {
@@ -108,7 +112,7 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
   const handleConnect = async (userId: number, userName: string) => {
     try {
       setConnecting(prev => new Set(prev).add(userId))
-      
+
       const result = await safeApiCall(
         () => fetch('/api/follow', {
           method: 'POST',
@@ -127,10 +131,10 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
       if (result.success) {
         // Update follow status
         setFollowStatus(prev => new Map(prev).set(userId, 'pending'))
-        
+
         // Show success message
         toast.success(`Connection request sent to ${userName}`)
-        
+
         // Optional: Remove from suggestions after connecting
         // setSuggestions(prev => prev.filter(suggestion => suggestion.id !== userId))
       } else {
