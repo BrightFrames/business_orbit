@@ -47,19 +47,17 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   }, [open])
 
   const runSearch = async () => {
-    if (!category) {
-      setError("Please select a category (People, Chapter, or Events)")
-      return
-    }
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams({
+      const params: any = {
         q: q,
-        limit: '5',
-        category: category
-      })
-      const res = await fetch(`/api/search?${params.toString()}`, { credentials: 'include' })
+        limit: '5'
+      }
+      if (category) {
+        params.category = category
+      }
+      const res = await fetch(`/api/search?${new URLSearchParams(params).toString()}`, { credentials: 'include' })
       const json = await res.json()
       if (!res.ok || json.success === false) throw new Error(json.error || 'Search failed')
       setData(json)
@@ -90,21 +88,21 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           <div className="flex gap-2 mb-4">
             <Button
               variant={category === "people" ? "default" : "outline"}
-              onClick={() => setCategory("people")}
+              onClick={() => setCategory(category === "people" ? null : "people")}
               className="flex-1"
             >
               People
             </Button>
             <Button
               variant={category === "chapter" ? "default" : "outline"}
-              onClick={() => setCategory("chapter")}
+              onClick={() => setCategory(category === "chapter" ? null : "chapter")}
               className="flex-1"
             >
               Chapter
             </Button>
             <Button
               variant={category === "events" ? "default" : "outline"}
-              onClick={() => setCategory("events")}
+              onClick={() => setCategory(category === "events" ? null : "events")}
               className="flex-1"
             >
               Events
@@ -117,13 +115,13 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
               ref={inputRef}
               aria-label="Search"
               placeholder={
-                category === "people" 
-                  ? "Type to search people by name" 
+                category === "people"
+                  ? "Type to search people by name"
                   : category === "chapter"
-                  ? "Type to search chapters by location or name"
-                  : category === "events"
-                  ? "Type to search events by title"
-                  : "Select a category above to search"
+                    ? "Type to search chapters by location or name"
+                    : category === "events"
+                      ? "Type to search events by title"
+                      : "Type to search people, chapters, or events"
               }
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -133,7 +131,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           </div>
 
           <div className="mt-3">
-            <Button onClick={runSearch} disabled={!q.trim() || !category || loading} className="w-full sm:w-auto">
+            <Button onClick={runSearch} disabled={!q.trim() || loading} className="w-full sm:w-auto">
               {loading ? 'Searching...' : 'Search'}
             </Button>
           </div>
@@ -143,72 +141,105 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           )}
 
           {!loading && data && (
-            <div className="mt-4">
-              {category === "people" && (
+            <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-6 pr-2">
+              {(category === "people" || category === null) && (
                 <div>
-                  <h3 className="text-sm font-semibold mb-2">People</h3>
+                  <h3 className="text-sm font-semibold mb-2 flex items-center justify-between">
+                    <span>People</span>
+                    {data.people.length > 0 && <span className="text-xs font-normal text-muted-foreground">{data.people.length} results</span>}
+                  </h3>
                   <div className="space-y-2">
-                    {data.people.length === 0 && <p className="text-sm text-muted-foreground">No people found</p>}
-                    {data.people.map((p) => (
-                      <Card key={p.id} className="p-3 hover:bg-accent/30 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-medium">{p.name}</div>
-                            <div className="text-xs text-muted-foreground">{p.profession || 'Professional'}</div>
+                    {data.people.length === 0 ? (
+                      category === "people" && <p className="text-sm text-muted-foreground">No people found</p>
+                    ) : (
+                      data.people.map((p) => (
+                        <Card key={p.id} className="p-3 hover:bg-accent/30 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold uppercase overflow-hidden">
+                                {p.profile_photo_url ? (
+                                  <img src={p.profile_photo_url} alt={p.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  p.name.charAt(0)
+                                )}
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium">{p.name}</div>
+                                <div className="text-xs text-muted-foreground">{p.profession || 'Professional'}</div>
+                              </div>
+                            </div>
+                            <Badge variant="outline">Person</Badge>
                           </div>
-                          <Badge variant="outline">Person</Badge>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      ))
+                    )}
                   </div>
                 </div>
               )}
 
-              {category === "chapter" && (
+              {(category === "chapter" || category === null) && (
                 <div>
-                  <h3 className="text-sm font-semibold mb-2">Chapters</h3>
+                  <h3 className="text-sm font-semibold mb-2 flex items-center justify-between">
+                    <span>Chapters</span>
+                    {data.chapters.length > 0 && <span className="text-xs font-normal text-muted-foreground">{data.chapters.length} results</span>}
+                  </h3>
                   <div className="space-y-2">
-                    {data.chapters.length === 0 && <p className="text-sm text-muted-foreground">No chapters found</p>}
-                    {data.chapters.map((c) => (
-                      <Card key={c.id} className="p-3 hover:bg-accent/30 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-medium">{c.name}</div>
-                            <div className="text-xs text-muted-foreground">{c.location_city}</div>
+                    {data.chapters.length === 0 ? (
+                      category === "chapter" && <p className="text-sm text-muted-foreground">No chapters found</p>
+                    ) : (
+                      data.chapters.map((c) => (
+                        <Card key={c.id} className="p-3 hover:bg-accent/30 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-sm font-medium">{c.name}</div>
+                              <div className="text-xs text-muted-foreground">{c.location_city}</div>
+                            </div>
+                            <Badge variant="outline">Chapter</Badge>
                           </div>
-                          <Badge variant="outline">Chapter</Badge>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      ))
+                    )}
                   </div>
                 </div>
               )}
 
-              {category === "events" && (
+              {(category === "events" || category === null) && (
                 <div>
-                  <h3 className="text-sm font-semibold mb-2">Events</h3>
+                  <h3 className="text-sm font-semibold mb-2 flex items-center justify-between">
+                    <span>Events</span>
+                    {data.events.length > 0 && <span className="text-xs font-normal text-muted-foreground">{data.events.length} results</span>}
+                  </h3>
                   <div className="space-y-2">
-                    {data.events.length === 0 && <p className="text-sm text-muted-foreground">No events found</p>}
-                    {data.events.map((e) => (
-                      <Card key={e.id} className="p-3 hover:bg-accent/30 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-medium">{e.title}</div>
-                            <div className="text-xs text-muted-foreground">{new Date(e.date).toLocaleString()}</div>
+                    {data.events.length === 0 ? (
+                      category === "events" && <p className="text-sm text-muted-foreground">No events found</p>
+                    ) : (
+                      data.events.map((e) => (
+                        <Card key={e.id} className="p-3 hover:bg-accent/30 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-sm font-medium">{e.title}</div>
+                              <div className="text-xs text-muted-foreground">{new Date(e.date).toLocaleString()}</div>
+                            </div>
+                            <Badge variant="outline">{e.event_type}</Badge>
                           </div>
-                          <Badge variant="outline">{e.event_type}</Badge>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      ))
+                    )}
                   </div>
+                </div>
+              )}
+
+              {category === null && data.people.length === 0 && data.chapters.length === 0 && data.events.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">No results found for "{q}"</p>
                 </div>
               )}
             </div>
           )}
 
           {!loading && !data && (
-            <div className="mt-6 text-sm text-muted-foreground">
-              Select a category above and start typing to search.
+            <div className="mt-6 text-sm text-muted-foreground text-center py-10 border-2 border-dashed rounded-xl">
+              Type to search people, chapters, or events.
             </div>
           )}
         </div>

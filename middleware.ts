@@ -40,12 +40,7 @@ export function middleware(request: NextRequest) {
     'subscription',
     'connections',
     'navigator',
-    'chapters',
-    'groups',
-    'events',
-    'profile',
-    'consultation',
-    'rewards',
+    'reward', // changed from rewards to keep some protection if needed
     'feed',
   ]);
 

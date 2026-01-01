@@ -56,23 +56,32 @@ export async function GET(request: NextRequest) {
         userIdParam ? [limit, offset, parseInt(userIdParam)] : [limit, offset]
       );
 
-      // Get media for each post
-      const postsWithMedia = await Promise.all(
-        postsResult.rows.map(async (post: any) => {
-          const mediaQuery = `
-            SELECT id, media_type, cloudinary_url, file_name, file_size, mime_type
-            FROM post_media
-            WHERE post_id = $1
-            ORDER BY created_at ASC
-          `;
-          const mediaResult = await client.query(mediaQuery, [post.id]);
-          
-          return {
-            ...post,
-            media: mediaResult.rows
-          };
-        })
-      );
+      // Get all media for the fetched posts in a single query
+      const postIds = postsResult.rows.map(post => post.id);
+      let postsWithMedia = postsResult.rows.map(post => ({ ...post, media: [] }));
+
+      if (postIds.length > 0) {
+        const mediaQuery = `
+          SELECT post_id, id, media_type, cloudinary_url, file_name, file_size, mime_type
+          FROM post_media
+          WHERE post_id = ANY($1)
+          ORDER BY created_at ASC
+        `;
+        const mediaResult = await client.query(mediaQuery, [postIds]);
+
+        // Group media by post_id
+        const mediaByPostId = mediaResult.rows.reduce((acc: any, media: any) => {
+          if (!acc[media.post_id]) acc[media.post_id] = [];
+          acc[media.post_id].push(media);
+          return acc;
+        }, {});
+
+        // Attach media to posts
+        postsWithMedia = postsWithMedia.map(post => ({
+          ...post,
+          media: mediaByPostId[post.id] || []
+        }));
+      }
 
       // Get total count for pagination
       const countQuery = `SELECT COUNT(*) FROM posts WHERE status = 'published'${userIdParam ? ' AND user_id = $1' : ''}`;
@@ -143,10 +152,10 @@ export async function POST(request: NextRequest) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN'); // Start transaction
-      
+
       const now = new Date();
       const scheduledDate = scheduledAt ? new Date(scheduledAt) : null;
-      
+
       // Check daily post limit for immediate posts (not scheduled) - COMMENTED OUT
       // if (!scheduledDate || scheduledDate <= now) {
       //   const today = new Date();
@@ -182,11 +191,11 @@ export async function POST(request: NextRequest) {
       //     );
       //   }
       // }
-      
+
       // Determine status based on scheduled date
       let status = 'published';
       let publishedAt: Date | null = now;
-      
+
       if (scheduledDate && scheduledDate > now) {
         status = 'scheduled';
         publishedAt = null;
@@ -217,7 +226,7 @@ export async function POST(request: NextRequest) {
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING id
           `;
-          
+
           const mediaResult = await client.query(mediaQuery, [
             post.id,
             mediaItem.media_type,

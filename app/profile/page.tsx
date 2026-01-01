@@ -39,7 +39,7 @@ const defaultActivityPosts = [
   {
     author: {
       name: "You",
-      role: "Professional", 
+      role: "Professional",
       avatar: "U",
       rewardScore: 85,
     },
@@ -90,13 +90,13 @@ export default function ProfilePage() {
   // Function to fetch user groups (chapters + secret groups)
   const fetchUserGroups = async (showLoading = false) => {
     if (!user) return
-    
+
     if (showLoading) setGroupsLoading(true)
-    
+
     try {
       // Fetch chapters
       const chaptersResult = await safeApiCall(
-        () => fetch(`/api/users/${user.id}/chapters`, { 
+        () => fetch(`/api/users/${user.id}/chapters`, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -104,10 +104,10 @@ export default function ProfilePage() {
         }),
         'Failed to fetch user chapters'
       )
-      
+
       // Fetch secret groups
       const secretGroupsResult = await safeApiCall(
-        () => fetch(`/api/users/${user.id}/secret-groups`, { 
+        () => fetch(`/api/users/${user.id}/secret-groups`, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -115,9 +115,9 @@ export default function ProfilePage() {
         }),
         'Failed to fetch user secret groups'
       )
-      
+
       let allGroups: UserGroup[] = []
-      
+
       // Process chapters
       if (chaptersResult.success && chaptersResult.data && typeof chaptersResult.data === 'object' && chaptersResult.data !== null) {
         const chaptersData = chaptersResult.data as any
@@ -130,7 +130,7 @@ export default function ProfilePage() {
           allGroups = [...allGroups, ...chapterGroups]
         }
       }
-      
+
       // Process secret groups
       if (secretGroupsResult.success && secretGroupsResult.data && typeof secretGroupsResult.data === 'object' && secretGroupsResult.data !== null) {
         const secretGroupsData = secretGroupsResult.data as any
@@ -143,13 +143,13 @@ export default function ProfilePage() {
           allGroups = [...allGroups, ...secretGroups]
         }
       }
-      
+
       setUserGroups(allGroups)
-      
+
       if (showLoading) {
         toast.success('Groups updated successfully!')
       }
-      
+
     } catch (error) {
       console.error('Error fetching user groups:', error)
       setUserGroups([])
@@ -275,7 +275,7 @@ export default function ProfilePage() {
         const data: any = (res as any).data
         if ((res as any).success && Array.isArray(data?.events)) setEvents(data.events)
       }
-    } catch {}
+    } catch { }
   }
 
   return (
@@ -289,7 +289,7 @@ export default function ProfilePage() {
             {/* Cover Banner with Pattern */}
             <div
               className="h-24 sm:h-32 md:h-40 lg:h-48 bg-muted relative overflow-hidden"
-              style={{ 
+              style={{
                 backgroundImage: user.bannerUrl ? `url("${user.bannerUrl}")` : `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23000000' fillOpacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center'
@@ -349,8 +349,8 @@ export default function ProfilePage() {
                     <Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     {isEditing ? "Cancel Edit" : "Edit Profile"}
                   </Button>
-                  <Button 
-                    variant="destructive" 
+                  <Button
+                    variant="destructive"
                     onClick={handleLogout}
                     className="w-full sm:w-auto cursor-pointer text-xs sm:text-sm"
                   >
@@ -364,292 +364,290 @@ export default function ProfilePage() {
             {/* Profile Content */}
             <div className="px-4 sm:px-6 lg:px-8">
               {isEditing ? (
-                <EditProfileForm 
-                  user={user} 
+                <EditProfileForm
+                  user={user}
                   onCancel={() => setIsEditing(false)}
                   onSave={handleSaveProfile}
                 />
               ) : (
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="overflow-x-auto">
-                  <TabsList className="grid w-full grid-cols-4 min-w-max lg:min-w-0">
-                    <TabsTrigger value="about" className="whitespace-nowrap cursor-pointer text-xs sm:text-sm">
-                      About
-                    </TabsTrigger>
-                    <TabsTrigger value="activity" className="whitespace-nowrap cursor-pointer text-xs sm:text-sm">
-                      Activity
-                    </TabsTrigger>
-                    <TabsTrigger value="groups" className="whitespace-nowrap cursor-pointer text-xs sm:text-sm">
-                      Groups
-                    </TabsTrigger>
-                    <TabsTrigger value="consultation" className="whitespace-nowrap cursor-pointer text-xs sm:text-sm">
-                      Consultation
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                <TabsContent value="about" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-                  <Card className="p-3 sm:p-4 md:p-6">
-                    <h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">About</h3>
-                    <p className="text-muted-foreground leading-relaxed text-xs sm:text-sm md:text-base">
-                      {user.description || "Passionate professional with experience in building innovative solutions. I love connecting with fellow entrepreneurs and sharing insights about strategy, research, and leadership."}
-                    </p>
-                  </Card>
-
-                  <Card className="p-3 sm:p-4 md:p-6">
-                    <h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Skills</h3>
-                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                      {user.skills && user.skills.length > 0 ? (
-                        user.skills.map((skill) => (
-                          <Badge key={skill} variant="outline" className="text-xs sm:text-sm">
-                            {skill}
-                          </Badge>
-                        ))
-                      ) : (
-                        <>
-                          <Badge variant="outline" className="text-xs sm:text-sm">Product Strategy</Badge>
-                          <Badge variant="outline" className="text-xs sm:text-sm">AI/ML</Badge>
-                          <Badge variant="outline" className="text-xs sm:text-sm">User Research</Badge>
-                          <Badge variant="outline" className="text-xs sm:text-sm">Team Leadership</Badge>
-                          <Badge variant="outline" className="text-xs sm:text-sm">Data Analytics</Badge>
-                          <Badge variant="outline" className="text-xs sm:text-sm">Agile Methodologies</Badge>
-                        </>
-                      )}
-                    </div>
-                  </Card>
-
-                  <Card className="p-3 sm:p-4 md:p-6">
-                    <h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Interests</h3>
-                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                      {user.interest ? (
-                        <Badge variant="secondary" className="text-xs sm:text-sm">
-                          {user.interest}
-                        </Badge>
-                      ) : (
-                        <>
-                          <Badge variant="secondary" className="text-xs sm:text-sm">Artificial Intelligence</Badge>
-                          <Badge variant="secondary" className="text-xs sm:text-sm">Startup Ecosystem</Badge>
-                          <Badge variant="secondary" className="text-xs sm:text-sm">Design Thinking</Badge>
-                          <Badge variant="secondary" className="text-xs sm:text-sm">Mentoring</Badge>
-                          <Badge variant="secondary" className="text-xs sm:text-sm">Tech Innovation</Badge>
-                        </>
-                      )}
-                    </div>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="activity" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm sm:text-base">Recent Activity</h3>
+                  <div className="overflow-x-auto">
+                    <TabsList className="grid w-full grid-cols-4 min-w-max lg:min-w-0">
+                      <TabsTrigger value="about" className="whitespace-nowrap cursor-pointer text-xs sm:text-sm">
+                        About
+                      </TabsTrigger>
+                      <TabsTrigger value="activity" className="whitespace-nowrap cursor-pointer text-xs sm:text-sm">
+                        Activity
+                      </TabsTrigger>
+                      <TabsTrigger value="groups" className="whitespace-nowrap cursor-pointer text-xs sm:text-sm">
+                        Groups
+                      </TabsTrigger>
+                      <TabsTrigger value="consultation" className="whitespace-nowrap cursor-pointer text-xs sm:text-sm">
+                        Consultation
+                      </TabsTrigger>
+                    </TabsList>
                   </div>
-                  <Card className="p-3 sm:p-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                      <StatTile onClick={() => handleToggle('chapters')} clickable icon={<Users className="w-4 h-4" />} label="Chapters Joined" value={statsLoading ? '—' : String(stats.chaptersJoined)} />
-                      <StatTile onClick={() => handleToggle('groups')} clickable icon={<Lock className="w-4 h-4" />} label="Groups Joined" value={statsLoading ? '—' : String(stats.groupsJoined)} />
-                      <StatTile onClick={() => handleToggle('connections')} clickable icon={<UserPlus className="w-4 h-4" />} label="Connections" value={statsLoading ? '—' : String(stats.connections)} />
-                      <StatTile icon={<Mail className="w-4 h-4" />} label="Req. Incoming" value={statsLoading ? '—' : String(stats.connectionRequestsIncoming)} />
-                      <StatTile icon={<Send className="w-4 h-4" />} label="Req. Outgoing" value={statsLoading ? '—' : String(stats.connectionRequestsOutgoing)} />
-                      <StatTile icon={<MessageCircle className="w-4 h-4" />} label="Total Messages" value={statsLoading ? '—' : String(stats.totalMessages)} />
-                      <StatTile icon={<Hash className="w-4 h-4" />} label="Posts" value={statsLoading ? '—' : String(stats.posts)} />
-                      <StatTile onClick={() => handleToggle('events')} clickable icon={<Calendar className="w-4 h-4" />} label="Events Attended" value={statsLoading ? '—' : String(stats.eventsAttended)} />
-                        </div>
-                  </Card>
 
-                  {expanded === 'chapters' && (
-                    <Card className="p-3 sm:p-4">
-                      <h4 className="font-medium mb-2">Chapters</h4>
-                      <SimpleList items={chapters.map((c:any)=>({id: c.id, title: `${c.name} • ${c.location_city}`}))} emptyText="No chapters"/>
+                  <TabsContent value="about" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+                    <Card className="p-3 sm:p-4 md:p-6">
+                      <h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">About</h3>
+                      <p className="text-muted-foreground leading-relaxed text-xs sm:text-sm md:text-base">
+                        {user.description || "Passionate professional with experience in building innovative solutions. I love connecting with fellow entrepreneurs and sharing insights about strategy, research, and leadership."}
+                      </p>
                     </Card>
-                  )}
-                  {expanded === 'groups' && (
-                    <Card className="p-3 sm:p-4">
-                      <h4 className="font-medium mb-2">Groups</h4>
-                      <SimpleList items={userGroups.map((g:any)=>({id: g.name, title: `${g.name} • ${g.members} members`}))} emptyText="No groups"/>
-                    </Card>
-                  )}
-                  {expanded === 'connections' && (
-                    <Card className="p-3 sm:p-4">
-                      <h4 className="font-medium mb-2">Connections</h4>
-                      <SimpleList items={connections.map((u:any)=>({id: u.id, title: u.name}))} emptyText="No connections"/>
-                    </Card>
-                  )}
-                  {expanded === 'events' && (
-                    <Card className="p-3 sm:p-4">
-                      <h4 className="font-medium mb-2">Events Attended</h4>
-                      <SimpleList items={events.map((e:any)=>({id: e.id, title: `${e.title} • ${new Date(e.date).toLocaleDateString()}`}))} emptyText="No events"/>
-                    </Card>
-                  )}
 
-                  {/* Your Posts */}
-                  <div className="mt-4 sm:mt-6 mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-sm sm:text-base">Your Posts</h3>
+                    <Card className="p-3 sm:p-4 md:p-6">
+                      <h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Skills</h3>
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                        {user.skills && user.skills.length > 0 ? (
+                          user.skills.map((skill) => (
+                            <Badge key={skill} variant="outline" className="text-xs sm:text-sm">
+                              {skill}
+                            </Badge>
+                          ))
+                        ) : (
+                          <>
+                            <Badge variant="outline" className="text-xs sm:text-sm">Product Strategy</Badge>
+                            <Badge variant="outline" className="text-xs sm:text-sm">AI/ML</Badge>
+                            <Badge variant="outline" className="text-xs sm:text-sm">User Research</Badge>
+                            <Badge variant="outline" className="text-xs sm:text-sm">Team Leadership</Badge>
+                            <Badge variant="outline" className="text-xs sm:text-sm">Data Analytics</Badge>
+                            <Badge variant="outline" className="text-xs sm:text-sm">Agile Methodologies</Badge>
+                          </>
+                        )}
+                      </div>
+                    </Card>
+
+                    <Card className="p-3 sm:p-4 md:p-6">
+                      <h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Interests</h3>
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                        {user.interest ? (
+                          <Badge variant="secondary" className="text-xs sm:text-sm">
+                            {user.interest}
+                          </Badge>
+                        ) : (
+                          <>
+                            <Badge variant="secondary" className="text-xs sm:text-sm">Artificial Intelligence</Badge>
+                            <Badge variant="secondary" className="text-xs sm:text-sm">Startup Ecosystem</Badge>
+                            <Badge variant="secondary" className="text-xs sm:text-sm">Design Thinking</Badge>
+                            <Badge variant="secondary" className="text-xs sm:text-sm">Mentoring</Badge>
+                            <Badge variant="secondary" className="text-xs sm:text-sm">Tech Innovation</Badge>
+                          </>
+                        )}
+                      </div>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="activity" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-sm sm:text-base">Recent Activity</h3>
                     </div>
-                    {userPosts.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">You haven't posted yet.</div>
-                    ) : (
-                      <div className="space-y-3">
-                        {userPosts.map((p: any, idx: number) => (
-                          <div key={p.id || idx} className="border rounded-lg p-3 sm:p-4 bg-background">
-                            <div className="text-xs text-muted-foreground mb-1">
-                              {p.created_at ? new Date(p.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Recently'}
-                            </div>
-                            <div className="text-sm sm:text-base whitespace-pre-wrap break-words">
-                              {p.content || p.text || ''}
-                            </div>
-                            {Array.isArray(p.media) && p.media.length > 0 && (
-                              <div className="mt-2 space-y-2">
-                                {p.media.map((m: any) => (
-                                  <img key={m.id} src={m.cloudinary_url} alt="" className="max-h-64 rounded" />
-                                ))}
+                    <Card className="p-3 sm:p-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                        <StatTile onClick={() => handleToggle('chapters')} clickable icon={<Users className="w-4 h-4" />} label="Chapters Joined" value={statsLoading ? '—' : String(stats.chaptersJoined)} />
+                        <StatTile onClick={() => handleToggle('groups')} clickable icon={<Lock className="w-4 h-4" />} label="Groups Joined" value={statsLoading ? '—' : String(stats.groupsJoined)} />
+                        <StatTile onClick={() => handleToggle('connections')} clickable icon={<UserPlus className="w-4 h-4" />} label="Connections" value={statsLoading ? '—' : String(stats.connections)} />
+                        <StatTile icon={<Mail className="w-4 h-4" />} label="Req. Incoming" value={statsLoading ? '—' : String(stats.connectionRequestsIncoming)} />
+                        <StatTile icon={<Send className="w-4 h-4" />} label="Req. Outgoing" value={statsLoading ? '—' : String(stats.connectionRequestsOutgoing)} />
+                        <StatTile icon={<MessageCircle className="w-4 h-4" />} label="Total Messages" value={statsLoading ? '—' : String(stats.totalMessages)} />
+                        <StatTile icon={<Hash className="w-4 h-4" />} label="Posts" value={statsLoading ? '—' : String(stats.posts)} />
+                        <StatTile onClick={() => handleToggle('events')} clickable icon={<Calendar className="w-4 h-4" />} label="Events Attended" value={statsLoading ? '—' : String(stats.eventsAttended)} />
+                      </div>
+                    </Card>
+
+                    {expanded === 'chapters' && (
+                      <Card className="p-3 sm:p-4">
+                        <h4 className="font-medium mb-2">Chapters</h4>
+                        <SimpleList items={chapters.map((c: any) => ({ id: c.id, title: `${c.name} • ${c.location_city}` }))} emptyText="No chapters" />
+                      </Card>
+                    )}
+                    {expanded === 'groups' && (
+                      <Card className="p-3 sm:p-4">
+                        <h4 className="font-medium mb-2">Groups</h4>
+                        <SimpleList items={userGroups.map((g: any) => ({ id: g.name, title: `${g.name} • ${g.members} members` }))} emptyText="No groups" />
+                      </Card>
+                    )}
+                    {expanded === 'connections' && (
+                      <Card className="p-3 sm:p-4">
+                        <h4 className="font-medium mb-2">Connections</h4>
+                        <SimpleList items={connections.map((u: any) => ({ id: u.id, title: u.name }))} emptyText="No connections" />
+                      </Card>
+                    )}
+                    {expanded === 'events' && (
+                      <Card className="p-3 sm:p-4">
+                        <h4 className="font-medium mb-2">Events Attended</h4>
+                        <SimpleList items={events.map((e: any) => ({ id: e.id, title: `${e.title} • ${new Date(e.date).toLocaleDateString()}` }))} emptyText="No events" />
+                      </Card>
+                    )}
+
+                    {/* Your Posts */}
+                    <div className="mt-4 sm:mt-6 mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-sm sm:text-base">Your Posts</h3>
+                      </div>
+                      {userPosts.length === 0 ? (
+                        <div className="text-sm text-muted-foreground">You haven't posted yet.</div>
+                      ) : (
+                        <div className="space-y-3">
+                          {userPosts.map((p: any, idx: number) => (
+                            <div key={p.id || idx} className="border rounded-lg p-3 sm:p-4 bg-background">
+                              <div className="text-xs text-muted-foreground mb-1">
+                                {p.created_at ? new Date(p.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Recently'}
                               </div>
-                            )}
+                              <div className="text-sm sm:text-base whitespace-pre-wrap break-words">
+                                {p.content || p.text || ''}
+                              </div>
+                              {Array.isArray(p.media) && p.media.length > 0 && (
+                                <div className="mt-2 space-y-2">
+                                  {p.media.map((m: any) => (
+                                    <img key={m.id} src={m.cloudinary_url} alt="" className="max-h-64 rounded" />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="groups" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-sm sm:text-base">Groups & Chapters</h3>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="text-xs">{userGroups.length} groups</Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => fetchUserGroups(true)}
+                          disabled={groupsLoading}
+                          className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                        >
+                          <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${groupsLoading ? 'animate-spin' : ''}`} />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {userGroups.length === 0 ? (
+                      <Card className="p-6 sm:p-8 text-center">
+                        <div className="flex flex-col items-center space-y-3">
+                          <Users className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground" />
+                          <div>
+                            <h4 className="font-medium text-base sm:text-lg">No Groups Yet</h4>
+                            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                              Join chapters and secret groups to see them here
+                            </p>
                           </div>
+                          <Button
+                            onClick={() => window.location.href = '/product/groups'}
+                            className="mt-2 text-xs sm:text-sm"
+                          >
+                            Browse Groups
+                          </Button>
+                        </div>
+                      </Card>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        {userGroups.map((group) => (
+                          <Card key={`${group.type}-${group.name}`} className="p-3 sm:p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
+                            if (group.type === 'secret') {
+                              window.location.href = `/product/groups/${encodeURIComponent(group.name)}`
+                            } else {
+                              window.location.href = `/chapters/${encodeURIComponent(group.name)}`
+                            }
+                          }}>
+                            <div className="flex items-center space-x-2 sm:space-x-3">
+                              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${group.type === "chapter"
+                                ? "bg-gray-100 text-gray-600"
+                                : "bg-gray-100 text-gray-600"
+                                }`}>
+                                {group.type === "chapter" ? <Users className="w-5 h-5 sm:w-6 sm:h-6" /> : <Lock className="w-5 h-5 sm:w-6 sm:h-6" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-sm sm:text-base truncate">{group.name}</h4>
+                                <p className="text-xs sm:text-sm text-muted-foreground">{group.members} members</p>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs mt-1 ${group.type === "chapter"
+                                    ? "border-gray-200 text-gray-700 bg-gray-50"
+                                    : "border-gray-200 text-gray-700 bg-gray-50"
+                                    }`}
+                                >
+                                  {group.type === "chapter" ? "Chapter" : "Secret Group"}
+                                </Badge>
+                              </div>
+                            </div>
+                          </Card>
                         ))}
                       </div>
                     )}
-                  </div>
-                </TabsContent>
+                  </TabsContent>
 
-                <TabsContent value="groups" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm sm:text-base">Groups & Chapters</h3>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="text-xs">{userGroups.length} groups</Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => fetchUserGroups(true)}
-                        disabled={groupsLoading}
-                        className="h-6 w-6 sm:h-8 sm:w-8 p-0"
-                      >
-                        <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${groupsLoading ? 'animate-spin' : ''}`} />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {userGroups.length === 0 ? (
-                    <Card className="p-6 sm:p-8 text-center">
-                      <div className="flex flex-col items-center space-y-3">
-                        <Users className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground" />
-                        <div>
-                          <h4 className="font-medium text-base sm:text-lg">No Groups Yet</h4>
-                          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                            Join chapters and secret groups to see them here
-                          </p>
+                  <TabsContent value="consultation" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+                    <Card className="p-3 sm:p-4 md:p-6">
+                      <div className="flex items-center justify-between mb-3 sm:mb-4">
+                        <h3 className="font-semibold text-sm sm:text-base">Consultation Services</h3>
+                        <Badge className="bg-green-100 text-green-800 text-xs">Available</Badge>
+                      </div>
+                      <p className="text-muted-foreground mb-4 sm:mb-6 text-xs sm:text-sm md:text-base">
+                        Book a consultation session to discuss product strategy, team leadership, or AI implementation.
+                      </p>
+
+                      <div className="space-y-4 sm:space-y-6">
+                        <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                          <div className="flex items-center space-x-2 sm:space-x-3">
+                            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                            <div>
+                              <p className="font-medium text-sm sm:text-base">$150/hour</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Rate set by Reward System</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 sm:space-x-3">
+                            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                            <div>
+                              <p className="font-medium text-sm sm:text-base">30-60 min sessions</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Flexible duration</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 sm:space-x-3">
+                            <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 flex-shrink-0" />
+                            <div>
+                              <p className="font-medium text-sm sm:text-base">4.9/5 rating</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">Based on 23 sessions</p>
+                            </div>
+                          </div>
                         </div>
-                        <Button 
-                          onClick={() => window.location.href = '/product/groups'}
-                          className="mt-2 text-xs sm:text-sm"
-                        >
-                          Browse Groups
-                        </Button>
+
+                        <div className="space-y-2 sm:space-y-3">
+                          <Button onClick={handleEditToggle} className="w-full cursor-pointer text-xs sm:text-sm">
+                            <Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                            Edit Profile
+                          </Button>
+                          <Button variant="outline" className="w-full bg-transparent cursor-pointer text-xs sm:text-sm">
+                            View Available Slots
+                          </Button>
+                        </div>
                       </div>
                     </Card>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      {userGroups.map((group) => (
-                        <Card key={`${group.type}-${group.name}`} className="p-3 sm:p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
-                          if (group.type === 'secret') {
-                            window.location.href = `/product/groups/${encodeURIComponent(group.name)}`
-                          } else {
-                            window.location.href = `/chapters/${encodeURIComponent(group.name)}`
-                          }
-                        }}>
-                          <div className="flex items-center space-x-2 sm:space-x-3">
-                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                              group.type === "chapter" 
-                                ? "bg-gray-100 text-gray-600" 
-                                : "bg-gray-100 text-gray-600"
-                            }`}>
-                              {group.type === "chapter" ? <Users className="w-5 h-5 sm:w-6 sm:h-6" /> : <Lock className="w-5 h-5 sm:w-6 sm:h-6" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-sm sm:text-base truncate">{group.name}</h4>
-                              <p className="text-xs sm:text-sm text-muted-foreground">{group.members} members</p>
-                              <Badge 
-                                variant="outline" 
-                                className={`text-xs mt-1 ${
-                                  group.type === "chapter" 
-                                    ? "border-gray-200 text-gray-700 bg-gray-50" 
-                                    : "border-gray-200 text-gray-700 bg-gray-50"
-                                }`}
-                              >
-                                {group.type === "chapter" ? "Chapter" : "Secret Group"}
-                              </Badge>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
 
-                <TabsContent value="consultation" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-                  <Card className="p-3 sm:p-4 md:p-6">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <h3 className="font-semibold text-sm sm:text-base">Consultation Services</h3>
-                      <Badge className="bg-green-100 text-green-800 text-xs">Available</Badge>
-                    </div>
-                    <p className="text-muted-foreground mb-4 sm:mb-6 text-xs sm:text-sm md:text-base">
-                      Book a consultation session to discuss product strategy, team leadership, or AI implementation.
-                    </p>
-
-                    <div className="space-y-4 sm:space-y-6">
-                      <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                        <div className="flex items-center space-x-2 sm:space-x-3">
-                          <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm sm:text-base">$150/hour</p>
-                            <p className="text-xs sm:text-sm text-muted-foreground">Rate set by Reward System</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2 sm:space-x-3">
-                          <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm sm:text-base">30-60 min sessions</p>
-                            <p className="text-xs sm:text-sm text-muted-foreground">Flexible duration</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2 sm:space-x-3">
-                          <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm sm:text-base">4.9/5 rating</p>
-                            <p className="text-xs sm:text-sm text-muted-foreground">Based on 23 sessions</p>
-                          </div>
-                        </div>
-                      </div>
-
+                    <Card className="p-3 sm:p-4 md:p-6">
+                      <h4 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Expertise Areas</h4>
                       <div className="space-y-2 sm:space-y-3">
-                        <Button className="w-full cursor-pointer text-xs sm:text-sm">
-                          <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                          Book Now
-                        </Button>
-                        <Button variant="outline" className="w-full bg-transparent cursor-pointer text-xs sm:text-sm">
-                          View Available Slots
-                        </Button>
+                        {((user as any).expertise && (user as any).expertise.length > 0 ? (user as any).expertise : [
+                          "Product Strategy & Roadmapping",
+                          "AI/ML Product Development",
+                          "Team Leadership & Management",
+                          "User Research & Analytics",
+                        ]).map((area: string) => (
+                          <div key={area} className="flex items-center space-x-2">
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-foreground rounded-full flex-shrink-0"></div>
+                            <span className="text-xs sm:text-sm">{area}</span>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  </Card>
-
-                  <Card className="p-3 sm:p-4 md:p-6">
-                    <h4 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Expertise Areas</h4>
-                    <div className="space-y-2 sm:space-y-3">
-                      {[
-                        "Product Strategy & Roadmapping",
-                        "AI/ML Product Development",
-                        "Team Leadership & Management",
-                        "User Research & Analytics",
-                      ].map((area) => (
-                        <div key={area} className="flex items-center space-x-2">
-                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-foreground rounded-full flex-shrink-0"></div>
-                          <span className="text-xs sm:text-sm">{area}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
               )}
             </div>
           </div>
@@ -679,7 +677,7 @@ function StatTile({ icon, label, value, onClick, clickable }: { icon: React.Reac
   )
 }
 
-function SimpleList({ items, emptyText }: { items: { id: string|number, title: string }[], emptyText: string }) {
+function SimpleList({ items, emptyText }: { items: { id: string | number, title: string }[], emptyText: string }) {
   if (!items || items.length === 0) {
     return <div className="text-sm text-muted-foreground">{emptyText}</div>
   }

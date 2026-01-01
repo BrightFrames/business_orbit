@@ -61,7 +61,7 @@ export default function EventsPage() {
   const [events, setEvents] = useState(upcomingEvents);
   const [hostingEvents, setHostingEvents] = useState<any[]>([]);
 
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [proposalData, setProposalData] = useState({
     name: "",
@@ -82,7 +82,7 @@ export default function EventsPage() {
   // Fetch hosting events
   useEffect(() => {
     if (!user?.id) return;
-    
+
     const fetchHostingEvents = async () => {
       try {
         console.log(`[Frontend] Fetching hosting events for user ${user.id}`);
@@ -95,13 +95,13 @@ export default function EventsPage() {
         }
         const data = await res.json();
         console.log(`[Frontend] Received ${Array.isArray(data) ? data.length : 0} hosting events:`, data);
-        
+
         if (!Array.isArray(data)) {
           console.error('[Frontend] Hosting API did not return an array:', data);
           setHostingEvents([]);
           return;
         }
-        
+
         const transformed = data.map((event: any) => {
           const eventDate = new Date(event.date);
           // Get creator name from proposal, fallback to host name or user name
@@ -115,7 +115,7 @@ export default function EventsPage() {
             creator: creatorName,
             creatorAvatar: (creatorName || "U").slice(0, 2).toUpperCase(),
             date: eventDate.toLocaleDateString(),
-            time: eventDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             location: event.venue_address || "Online Event",
             attendees: Number(event.rsvp_count || 0) || 0,
             maxAttendees: 100,
@@ -161,7 +161,7 @@ export default function EventsPage() {
             host: "Event Host",
             hostAvatar: "EH",
             date: eventDate.toLocaleDateString(),
-            time: eventDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             location: event.venue_address || "Online Event",
             attendees: Number(event.rsvp_count || 0) || 0,
             maxAttendees: 100,
@@ -189,7 +189,7 @@ export default function EventsPage() {
     };
   }, [searchQuery, searchDate, user?.id]);
 
-  
+
   const filteredEvents = events; // server-side filtered
 
   // Categorize by date
@@ -198,13 +198,13 @@ export default function EventsPage() {
     filteredEvents
       .filter((e: any) => typeof e.dateMs === 'number' ? e.dateMs >= nowMs : false)
       .sort((a: any, b: any) => (a.dateMs || 0) - (b.dateMs || 0))
-  , [filteredEvents, nowMs]);
+    , [filteredEvents, nowMs]);
 
   const pastEventsList = useMemo(() =>
     filteredEvents
       .filter((e: any) => typeof e.dateMs === 'number' ? e.dateMs < nowMs : false)
       .sort((a: any, b: any) => (b.dateMs || 0) - (a.dateMs || 0))
-  , [filteredEvents, nowMs]);
+    , [filteredEvents, nowMs]);
 
   const handleRSVPClick = (event: any) => {
     setSelectedEvent(event);
@@ -220,6 +220,7 @@ export default function EventsPage() {
       const res = await fetch(`/api/events/${event.id}/rsvp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           userId: String(user.id),
           userEmail: user.email,
@@ -258,7 +259,7 @@ export default function EventsPage() {
             <p className="text-sm sm:text-base text-muted-foreground">Discover and join professional networking events</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
-            <Button 
+            <Button
               className="rounded-full w-full sm:w-auto text-sm"
               onClick={() => setIsModalOpen(true)}
             >

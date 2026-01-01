@@ -8,9 +8,9 @@ export const runtime = 'nodejs'
 export async function GET(request: NextRequest) {
   try {
     // Prevent execution during build time
-    if (process.env.NEXT_PHASE === 'phase-production-build' || 
-        process.env.NEXT_PHASE === 'phase-development-build' ||
-        process.env.npm_lifecycle_event === 'build') {
+    if (process.env.NEXT_PHASE === 'phase-production-build' ||
+      process.env.NEXT_PHASE === 'phase-development-build' ||
+      process.env.npm_lifecycle_event === 'build') {
       return NextResponse.json({
         success: true,
         query: '',
@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
     const limitParam = parseInt(searchParams.get('limit') || '5')
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 25) : 5
 
+    console.log(`[Search] Query: "${q}", Category: "${category}", Limit: ${limit}`);
+
     if (!q) {
       return NextResponse.json({
         success: true,
@@ -37,9 +39,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (!pool) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Database not available' 
+      console.error('[Search] Database pool is null');
+      return NextResponse.json({
+        success: false,
+        error: 'Database not available'
       }, { status: 503 })
     }
 
@@ -49,9 +52,12 @@ export async function GET(request: NextRequest) {
       let people: any[] = []
       let events: any[] = []
 
+      // If category is null, we should probably search everything or return nothing
+      // The current implementation returns nothing if category is null.
+
       // Only search for the selected category
       if (category === 'chapter') {
-        // Chapters by location/name
+        console.log('[Search] Searching chapters...');
         const chaptersQuery = `
           SELECT id, name, location_city
           FROM chapters
@@ -64,8 +70,9 @@ export async function GET(request: NextRequest) {
           limit
         ])
         chapters = chaptersResult.rows
+        console.log(`[Search] Found ${chapters.length} chapters`);
       } else if (category === 'people') {
-        // People (users) by name/profession
+        console.log('[Search] Searching people...');
         const peopleQuery = `
           SELECT id, name, profession, profile_photo_url
           FROM users
@@ -78,8 +85,9 @@ export async function GET(request: NextRequest) {
           limit
         ])
         people = peopleResult.rows
+        console.log(`[Search] Found ${people.length} people`);
       } else if (category === 'events') {
-        // Events by title/venue
+        console.log('[Search] Searching events...');
         const eventsQuery = `
           SELECT id, title, date, event_type, venue_address
           FROM events
@@ -92,6 +100,37 @@ export async function GET(request: NextRequest) {
           limit
         ])
         events = eventsResult.rows
+        console.log(`[Search] Found ${events.length} events`);
+      } else {
+        console.log('[Search] No category specified, searching across all categories in parallel...');
+
+        // Parallel queries for all categories
+        const [peopleResult, chaptersResult, eventsResult] = await Promise.all([
+          client.query(`
+            SELECT id, name, profession, profile_photo_url
+            FROM users
+            WHERE name ILIKE $1 OR profession ILIKE $1
+            ORDER BY name LIMIT $2
+          `, [`%${q}%`, limit]),
+          client.query(`
+            SELECT id, name, location_city
+            FROM chapters
+            WHERE name ILIKE $1 OR location_city ILIKE $1
+            ORDER BY name LIMIT $2
+          `, [`%${q}%`, limit]),
+          client.query(`
+            SELECT id, title, date, event_type, venue_address
+            FROM events
+            WHERE title ILIKE $1 OR COALESCE(venue_address, '') ILIKE $1
+            ORDER BY date DESC LIMIT $2
+          `, [`%${q}%`, limit])
+        ]);
+
+        people = peopleResult.rows;
+        chapters = chaptersResult.rows;
+        events = eventsResult.rows;
+
+        console.log(`[Search] Global search results: People=${people.length}, Chapters=${chapters.length}, Events=${events.length}`);
       }
 
       return NextResponse.json({
@@ -104,8 +143,9 @@ export async function GET(request: NextRequest) {
     } finally {
       client.release()
     }
-  } catch {
-    return NextResponse.json({ success: false, error: 'Search failed' }, { status: 500 })
+  } catch (error: any) {
+    console.error('[Search] Error:', error);
+    return NextResponse.json({ success: false, error: 'Search failed', details: error.message }, { status: 500 })
   }
 }
 

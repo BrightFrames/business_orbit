@@ -29,7 +29,8 @@ export async function GET() {
     const result = await publishScheduledPosts()
     return NextResponse.json(result)
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: 'Failed to publish scheduled posts' }, { status: 500 })
+    console.error('[PublishScheduled] GET Error:', error)
+    return NextResponse.json({ success: false, error: 'Failed to publish scheduled posts', details: error.message }, { status: 500 })
   }
 }
 
@@ -38,7 +39,8 @@ export async function POST() {
     const result = await publishScheduledPosts()
     return NextResponse.json(result)
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: 'Failed to publish scheduled posts' }, { status: 500 })
+    console.error('[PublishScheduled] POST Error:', error)
+    return NextResponse.json({ success: false, error: 'Failed to publish scheduled posts', details: error.message }, { status: 500 })
   }
 }
 

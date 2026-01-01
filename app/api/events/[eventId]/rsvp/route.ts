@@ -8,9 +8,11 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ eventId: string }> }
+  { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const { eventId } = await params;
+    console.log(`[RSVP] Request for eventId: "${eventId}"`);
     const user = await getUserFromToken(req);
     if (!user) {
       return NextResponse.json(
@@ -19,12 +21,12 @@ export async function POST(
       );
     }
 
-    const { eventId } = await context.params;
     const parsedEventId = parseInt(eventId, 10);
 
     if (isNaN(parsedEventId)) {
+      console.error(`[RSVP] Invalid eventId: "${eventId}"`);
       return NextResponse.json(
-        { success: false, message: "Invalid event ID" },
+        { success: false, message: `Invalid event ID: ${eventId}` },
         { status: 400 }
       );
     }

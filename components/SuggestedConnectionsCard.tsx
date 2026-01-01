@@ -35,6 +35,8 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
 
   useEffect(() => {
     const fetchSuggestions = async () => {
+      if (!user) return; // Wait until user is loaded
+
       try {
         setLoading(true)
         setError(null)
@@ -54,9 +56,9 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
           const membersData = result.data as any
           const members = membersData.members || []
 
-          // Filter out current user if they happen to be in the list
+          // Filter out current user
           const suggested = members
-            .filter((member: any) => user ? member.id !== user.id : true)
+            .filter((member: any) => member.id !== user.id)
             .map((member: any) => ({
               id: member.id,
               name: member.name,
@@ -82,7 +84,7 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
     }
 
     fetchSuggestions()
-  }, [])
+  }, [user?.id])
 
   const fetchFollowStatus = async (userIds: number[]) => {
     try {

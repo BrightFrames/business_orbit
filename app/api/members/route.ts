@@ -11,7 +11,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all members with their chapter information grouped by user (excluding current user)
-    console.log(`[API/Members] User ID: ${user.id} (type: ${typeof user.id})`);
+    const currentUserId = parseInt(String(user.id))
+    console.log(`[API/Members] Filtering for current user ID: ${currentUserId} (type in JS: ${typeof currentUserId})`);
+
     const result = await pool.query(`
       SELECT 
         u.id,
@@ -34,7 +36,7 @@ export async function GET(request: NextRequest) {
       GROUP BY u.id, u.name, u.profile_photo_url, u.email, u.created_at
       ORDER BY u.created_at DESC
       LIMIT 50
-    `, [user.id])
+    `, [currentUserId])
 
     const members = result.rows.map((row: any) => ({
       id: row.id,

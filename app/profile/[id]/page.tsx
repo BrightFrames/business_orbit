@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DisplayPostCard } from "@/components/PostCard"
-import { MapPin, MessageCircle, UserPlus, Calendar, Star, Award, Users, Lock, DollarSign, Clock } from "lucide-react"
+import { MapPin, MessageCircle, UserPlus, Calendar, Star, Award, Users, Lock, DollarSign, Clock, Edit } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Upload } from "lucide-react"
 import toast from "react-hot-toast"
@@ -472,18 +472,28 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                   </div>
 
                   <div className="space-y-2 sm:space-y-3">
-                    <Button
-                      className="w-full text-xs sm:text-sm"
-                      onClick={() => {
-                        toast("This feature is enabled in Phase2/Version2", {
-                          icon: "📹",
-                          duration: 3000,
-                        })
-                      }}
-                    >
-                      <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      Book Now
-                    </Button>
+                    {isOwnProfile ? (
+                      <Button
+                        className="w-full text-xs sm:text-sm"
+                        onClick={() => setActiveTab('about')}
+                      >
+                        <Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        Edit Profile
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full text-xs sm:text-sm"
+                        onClick={() => {
+                          toast("This feature is enabled in Phase2/Version2", {
+                            icon: "📹",
+                            duration: 3000,
+                          })
+                        }}
+                      >
+                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        Book Now
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       className="w-full bg-transparent text-xs sm:text-sm"
@@ -503,12 +513,12 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
               <Card className="p-3 sm:p-4 md:p-6">
                 <h4 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Expertise Areas</h4>
                 <div className="space-y-2 sm:space-y-3">
-                  {[
+                  {(profileData.expertise && profileData.expertise.length > 0 ? profileData.expertise : [
                     "Product Strategy & Roadmapping",
                     "AI/ML Product Development",
                     "Team Leadership & Management",
                     "User Research & Analytics",
-                  ].map((area) => (
+                  ]).map((area: string) => (
                     <div key={area} className="flex items-center space-x-2">
                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-foreground rounded-full flex-shrink-0"></div>
                       <span className="text-xs sm:text-sm">{area}</span>

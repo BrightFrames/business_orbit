@@ -19,6 +19,8 @@ interface EditProfileFormProps {
     interest?: string
     profilePhotoUrl?: string
     bannerUrl?: string
+    expertise?: string[]
+    consultationRate?: number | string
   }
   onCancel: () => void
   onSave: (updatedData: any) => void
@@ -32,7 +34,14 @@ export default function EditProfileForm({ user, onCancel, onSave }: EditProfileF
     skills: user.skills || [],
     interest: user.interest || '',
     profilePhotoUrl: user.profilePhotoUrl || '',
-    bannerUrl: user.bannerUrl || ''
+    bannerUrl: user.bannerUrl || '',
+    expertise: user.expertise || [
+      "Product Strategy & Roadmapping",
+      "AI/ML Product Development",
+      "Team Leadership & Management",
+      "User Research & Analytics",
+    ],
+    consultationRate: user.consultationRate || 150
   })
 
   const [newSkill, setNewSkill] = useState('')
@@ -61,42 +70,42 @@ export default function EditProfileForm({ user, onCancel, onSave }: EditProfileF
 
   const uploadImage = async (file: File, type: 'profile' | 'banner') => {
     if (!file) return
-    const allowedTypes = ['image/jpeg','image/jpg','image/png','image/gif','image/webp']
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
     if (!allowedTypes.includes(file.type)) {
       toast.error('Please select a valid image file')
       return
     }
-    if (file.size > 5*1024*1024) {
+    if (file.size > 5 * 1024 * 1024) {
       toast.error('Image size should be less than 5MB')
       return
     }
 
     try {
-      setUploading(prev => ({...prev, [type]: true}))
+      setUploading(prev => ({ ...prev, [type]: true }))
       const form = new FormData()
       form.append(type === 'profile' ? 'profilePhoto' : 'banner', file)
-      
+
       const res = await fetch(`/api/images/${type === 'profile' ? 'profile' : 'banner'}`, {
         method: 'PUT',
         body: form,
         credentials: 'include'
       })
-      
+
       if (!res.ok) throw new Error('Upload failed')
-      
+
       const data = await res.json()
-      
+
       setFormData(prev => ({
         ...prev,
         profilePhotoUrl: type === 'profile' ? data.user.profilePhotoUrl : prev.profilePhotoUrl,
         bannerUrl: type === 'banner' ? data.user.bannerUrl : prev.bannerUrl,
       }))
-      
+
       toast.success(`${type === 'profile' ? 'Profile photo' : 'Banner'} updated successfully!`)
     } catch (error) {
       toast.error(`Failed to upload ${type === 'profile' ? 'profile photo' : 'banner'}`)
     } finally {
-      setUploading(prev => ({...prev, [type]: false}))
+      setUploading(prev => ({ ...prev, [type]: false }))
     }
   }
 
@@ -112,9 +121,11 @@ export default function EditProfileForm({ user, onCancel, onSave }: EditProfileF
         profession: formData.profession,
         description: formData.description,
         skills: formData.skills,
-        interest: formData.interest
+        interest: formData.interest,
+        expertise: formData.expertise,
+        consultationRate: formData.consultationRate
       }
-      
+
       const response = await fetch(`/api/users/${user.id}`, {
         method: 'PATCH',
         headers: {
@@ -145,20 +156,20 @@ export default function EditProfileForm({ user, onCancel, onSave }: EditProfileF
         <div className="space-y-4">
           <div
             className="h-32 bg-muted rounded-lg relative overflow-hidden"
-            style={{ 
-              backgroundImage: formData.bannerUrl 
-                ? `url("${formData.bannerUrl}")` 
+            style={{
+              backgroundImage: formData.bannerUrl
+                ? `url("${formData.bannerUrl}")`
                 : `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23000000' fillOpacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
               backgroundSize: 'cover',
               backgroundPosition: 'center'
             }}
           >
-            <input 
-              id="bannerInput" 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              onChange={(e) => handleImageChange(e, 'banner')} 
+            <input
+              id="bannerInput"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleImageChange(e, 'banner')}
             />
             <button
               disabled={uploading.banner}
@@ -188,12 +199,12 @@ export default function EditProfileForm({ user, onCancel, onSave }: EditProfileF
                 {formData.name.charAt(0).toUpperCase()}
               </div>
             )}
-            <input 
-              id="profileInput" 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              onChange={(e) => handleImageChange(e, 'profile')} 
+            <input
+              id="profileInput"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleImageChange(e, 'profile')}
             />
             <button
               disabled={uploading.profile}
@@ -287,6 +298,54 @@ export default function EditProfileForm({ user, onCancel, onSave }: EditProfileF
           onChange={(e) => handleInputChange('interest', e.target.value)}
           placeholder="Enter your interests"
         />
+      </Card>
+
+      {/* Expertise Areas Section */}
+      <Card className="p-6">
+        <h3 className="font-semibold mb-4">Consultation Expertise Areas</h3>
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {formData.expertise.map((area) => (
+              <Badge key={area} variant="secondary" className="flex items-center gap-1">
+                {area}
+                <button
+                  onClick={() => setFormData(prev => ({ ...prev, expertise: prev.expertise.filter(a => a !== area) }))}
+                  className="ml-1 hover:text-red-500"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+          <div className="flex space-x-2">
+            <Input
+              id="newExpertise"
+              placeholder="Add expertise area"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  const val = (e.target as HTMLInputElement).value.trim();
+                  if (val && !formData.expertise.includes(val)) {
+                    setFormData(prev => ({ ...prev, expertise: [...prev.expertise, val] }));
+                    (e.target as HTMLInputElement).value = '';
+                  }
+                }
+              }}
+            />
+            <Button
+              variant="outline"
+              onClick={() => {
+                const el = document.getElementById('newExpertise') as HTMLInputElement;
+                const val = el.value.trim();
+                if (val && !formData.expertise.includes(val)) {
+                  setFormData(prev => ({ ...prev, expertise: [...prev.expertise, val] }));
+                  el.value = '';
+                }
+              }}
+            >
+              Add
+            </Button>
+          </div>
+        </div>
       </Card>
 
       {/* Action Buttons */}
