@@ -1,7 +1,7 @@
 "use client"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Search, Home, Compass, Users, Calendar, User, Settings } from "lucide-react"
+import { Bell, Search, Home, Compass, Users, Calendar, User, Settings, MessageSquare } from "lucide-react"
 import { useState } from "react"
 import SearchModal from "@/components/SearchModal"
 import Link from "next/link"
@@ -18,6 +18,7 @@ export function Navigation() {
     { name: "Chapters", href: "/product/chapters", icon: Users },
     { name: "Groups", href: "/product/groups", icon: Users },
     { name: "Events", href: "/product/events", icon: Calendar },
+    { name: "Messages", href: "/product/messages", icon: MessageSquare },
     { name: "Profile", href: "/product/profile", icon: User },
   ]
 
@@ -28,7 +29,7 @@ export function Navigation() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left - Logo */}
-            <div 
+            <div
               className="flex items-center group cursor-pointer"
               onClick={(e) => {
                 e.preventDefault()
@@ -59,11 +60,10 @@ export function Navigation() {
                       })
                     }
                   }}
-                  className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer ${
-                    pathname === tab.href
+                  className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer ${pathname === tab.href
                       ? "bg-background text-foreground shadow-soft"
                       : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                  }`}
+                    }`}
                 >
                   {tab.name}
                 </Link>
@@ -77,9 +77,9 @@ export function Navigation() {
                 <span className="text-sm text-muted-foreground">Search</span>
               </Button>
 
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="relative group hover:bg-accent/50 cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault()
@@ -95,9 +95,9 @@ export function Navigation() {
                 <span className="ml-2 text-sm font-semibold">85</span>
               </Button>
 
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="relative group hover:bg-accent/50 cursor-pointer"
                 onClick={() => {
                   toast("This feature is enabled in Phase2/Version2", {
@@ -112,9 +112,9 @@ export function Navigation() {
                 </Badge>
               </Button>
 
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="relative group cursor-pointer hover:bg-accent/50"
                 onClick={() => {
                   toast("This feature is enabled in Phase2/Version2", {
@@ -133,7 +133,7 @@ export function Navigation() {
 
       {/* Mobile Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border md:hidden">
-        <div className="grid grid-cols-6 h-16">
+        <div className="grid grid-cols-7 h-16">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = pathname === tab.href
@@ -150,11 +150,10 @@ export function Navigation() {
                     })
                   }
                 }}
-                className={`flex flex-col items-center justify-center space-y-1 transition-all duration-200 cursor-pointer ${
-                  isActive
+                className={`flex flex-col items-center justify-center space-y-1 transition-all duration-200 cursor-pointer ${isActive
                     ? "text-foreground bg-accent/20"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
-                }`}
+                  }`}
               >
                 <Icon className={`w-5 h-5 ${isActive ? "scale-110" : ""} transition-transform`} />
                 <span className="text-xs font-medium">{tab.name}</span>

@@ -5,6 +5,8 @@ import cors from 'cors'
 import pool from '../lib/config/database'
 import { chatService } from '../lib/services/chat-service'
 import { groupChatService } from '../lib/services/group-chat-service'
+import { dmService } from '../lib/services/dm-service'
+
 
 type ChatMessage = {
   id: string
@@ -76,7 +78,7 @@ app.get('/messages/:chapterId', async (req: any, res: any) => {
     const { chapterId } = req.params as { chapterId: string }
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100)
     if (!chapterId) return res.status(400).json({ success: false, error: 'chapterId required' })
-    
+
     // Get messages from PostgreSQL
     const result = await chatService.getMessages(chapterId, limit)
     res.json({ success: true, messages: result.messages })
@@ -155,11 +157,11 @@ io.on('connection', (socket) => {
   console.log('Socket connected', socket.id)
   console.log('Socket transport:', socket.conn.transport.name)
   console.log('Socket ready state:', socket.conn.readyState)
-  
+
   socket.on('error', (error) => {
     console.error('Socket error:', error)
   })
-  
+
   socket.on('disconnect', (reason) => {
     console.log('Socket disconnected:', socket.id, 'reason:', reason)
     delete socketSession[socket.id]
@@ -309,6 +311,62 @@ io.on('connection', (socket) => {
     socket.to(room).emit('stopTyping', { userId: session.userId })
   })
 
+  // --- Personal Direct Messaging ---
+
+  // Join private room to receive DMs
+  socket.on('dm:join', ({ userId }: { userId: string }, ack?: (res: { ok: boolean; error?: string }) => void) => {
+    try {
+      if (!userId) {
+        ack?.({ ok: false, error: 'userId required' });
+        return;
+      }
+      const room = `user-${userId}`;
+      socket.join(room);
+      console.log(`Socket ${socket.id} joined private room ${room}`);
+      ack?.({ ok: true });
+    } catch (e) {
+      console.error('dm:join error', e);
+      ack?.({ ok: false, error: 'internal join error' });
+    }
+  });
+
+  // Send a direct message
+  socket.on('dm:send', async (payload: { conversationId: string; senderId: string; content: string; recipientId: string }, ack?: (res: { ok: boolean; message?: any; error?: string }) => void) => {
+    try {
+      const { conversationId, senderId, content, recipientId } = payload;
+      if (!conversationId || !senderId || !content || !recipientId) {
+        ack?.({ ok: false, error: 'missing parameters' });
+        return;
+      }
+
+      const saved = await dmService.storeMessage(conversationId, Number(senderId), content);
+
+      // Emit to recipient's private room
+      const recipientRoom = `user-${recipientId}`;
+      io.to(recipientRoom).emit('dm:message', saved);
+
+      // Emit back to sender's own room for sync across tabs
+      const senderRoom = `user-${senderId}`;
+      socket.to(senderRoom).emit('dm:message', saved);
+
+      ack?.({ ok: true, message: saved });
+    } catch (e) {
+      console.error('dm:send error', e);
+      ack?.({ ok: false, error: 'failed to send message' });
+    }
+  });
+
+  // Mark conversation as read
+  socket.on('dm:read', async ({ conversationId, userId }: { conversationId: string; userId: string }, ack?: (res: { ok: boolean; error?: string }) => void) => {
+    try {
+      await dmService.markAsRead(conversationId, Number(userId));
+      ack?.({ ok: true });
+    } catch (e) {
+      console.error('dm:read error', e);
+      ack?.({ ok: false, error: 'internal error' });
+    }
+  });
+
   // Admin monitoring - join all chapter rooms
   socket.on('joinAllRooms', async () => {
     try {
@@ -317,22 +375,22 @@ io.on('connection', (socket) => {
       try {
         const result = await client.query('SELECT id, name FROM chapters')
         const chapters = result.rows
-        
+
         // Join all chapter rooms
         chapters.forEach((chapter: any) => {
           const room = `chapter-${chapter.id}`
           socket.join(room)
-          socketSession[socket.id] = { 
-            userId: 'admin', 
+          socketSession[socket.id] = {
+            userId: 'admin',
             chapterId: 'all',
-            isAdmin: true 
+            isAdmin: true
           }
         })
-        
+
         console.log(`Admin socket ${socket.id} joined all ${chapters.length} chapter rooms`)
-        
+
         // Send current online users for all chapters
-        const onlineUsers: Array<{userId: string, userName: string, chapterId: string, chapterName: string}> = []
+        const onlineUsers: Array<{ userId: string, userName: string, chapterId: string, chapterName: string }> = []
         for (const chapter of chapters) {
           const room = `chapter-${chapter.id}`
           const roomSockets = io.sockets.adapter.rooms.get(room)
@@ -350,10 +408,10 @@ io.on('connection', (socket) => {
             }
           }
         }
-        
-        socket.emit('presence', { 
-          onlineCount: onlineUsers.length, 
-          users: onlineUsers 
+
+        socket.emit('presence', {
+          onlineCount: onlineUsers.length,
+          users: onlineUsers
         })
       } finally {
         client.release()

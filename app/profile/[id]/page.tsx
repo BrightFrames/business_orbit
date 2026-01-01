@@ -76,13 +76,13 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   const [profileData, setProfileData] = useState<UserProfile | null>(null)
   const [userGroups, setUserGroups] = useState<UserGroup[]>([])
   const [loadingProfile, setLoadingProfile] = useState(true)
-  const [uploading, setUploading] = useState<{profile:boolean;banner:boolean}>({profile:false, banner:false})
+  const [uploading, setUploading] = useState<{ profile: boolean; banner: boolean }>({ profile: false, banner: false })
 
   // Fetch user profile data
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (!currentUser || loading) return
-      
+
       try {
         const result = await safeApiCall(
           () => fetch(`/api/users/${params.id}`, {
@@ -90,21 +90,21 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
           }),
           'Failed to fetch user profile'
         )
-        
+
         if (result.success && result.data && typeof result.data === 'object' && result.data !== null) {
           const data = result.data as any
           setProfileData(data.user)
-          
+
           // Create groups array from chapters and secret groups
           const groups: UserGroup[] = [
-            ...data.groups.chapters.map((chapter: string) => ({ 
-              name: chapter, 
-              type: "chapter" as const, 
+            ...data.groups.chapters.map((chapter: string) => ({
+              name: chapter,
+              type: "chapter" as const,
               members: generateRandomMemberCount('chapter')
             })),
-            ...data.groups.secretGroups.map((group: string) => ({ 
-              name: group, 
-              type: "secret" as const, 
+            ...data.groups.secretGroups.map((group: string) => ({
+              name: group,
+              type: "secret" as const,
               members: generateRandomMemberCount('secret')
             }))
           ]
@@ -135,11 +135,11 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
 
   const uploadImage = async (file: File, type: 'profile' | 'banner') => {
     if (!file) return
-    const allowedTypes = ['image/jpeg','image/jpg','image/png','image/gif','image/webp']
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
     if (!allowedTypes.includes(file.type)) return
-    if (file.size > 5*1024*1024) return
+    if (file.size > 5 * 1024 * 1024) return
     try {
-      setUploading(prev => ({...prev, [type]: true}))
+      setUploading(prev => ({ ...prev, [type]: true }))
       const form = new FormData()
       form.append(type === 'profile' ? 'profilePhoto' : 'banner', file)
       const res = await fetch(`/api/images/${type === 'profile' ? 'profile' : 'banner'}`, {
@@ -156,7 +156,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         bannerUrl: type === 'banner' ? data.user.bannerUrl : prev.bannerUrl,
       }) : prev)
     } finally {
-      setUploading(prev => ({...prev, [type]: false}))
+      setUploading(prev => ({ ...prev, [type]: false }))
     }
   }
 
@@ -200,7 +200,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         {/* Cover Banner */}
         <div
           className="h-24 sm:h-32 md:h-40 lg:h-48 bg-muted relative overflow-hidden group"
-          style={{ 
+          style={{
             backgroundImage: (profileData.bannerUrl || (currentUser as any)?.bannerUrl)
               ? `url("${profileData.bannerUrl || (currentUser as any)?.bannerUrl}")`
               : `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23000000' fillOpacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
@@ -229,8 +229,8 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
             <div className="flex flex-col items-center lg:items-start">
               <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 bg-background rounded-full border-4 border-background shadow-lg flex items-center justify-center text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 sm:mb-3 overflow-hidden relative group">
                 {(profileData.profilePhotoUrl || (currentUser as any)?.profilePhotoUrl) ? (
-                  <img 
-                    src={profileData.profilePhotoUrl || (currentUser as any)?.profilePhotoUrl} 
+                  <img
+                    src={profileData.profilePhotoUrl || (currentUser as any)?.profilePhotoUrl}
                     alt={profileData.name}
                     className="w-full h-full object-cover"
                   />
@@ -270,7 +270,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                         })
                         if (res.ok) {
                           const data = await res.json()
-                          setProfileData(prev => prev ? ({...prev, name: data.user.name}) : prev)
+                          setProfileData(prev => prev ? ({ ...prev, name: data.user.name }) : prev)
                         }
                       }}
                       className="flex items-center gap-2"
@@ -303,18 +303,48 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
             </div>
 
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-3 pt-2 sm:pt-4">
-              <Button
-                variant={isConnected ? "secondary" : "default"}
-                onClick={handleConnect}
-                className="w-full sm:w-auto text-xs sm:text-sm"
-              >
-                <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                {isConnected ? "Connected" : "Connect"}
-              </Button>
-              <Button variant="outline" className="w-full sm:w-auto bg-transparent text-xs sm:text-sm">
-                <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                Message
-              </Button>
+              {!isOwnProfile && (
+                <>
+                  <Button
+                    variant={isConnected ? "secondary" : "default"}
+                    onClick={handleConnect}
+                    className="w-full sm:w-auto text-xs sm:text-sm"
+                  >
+                    <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    {isConnected ? "Connected" : "Connect"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto bg-transparent text-xs sm:text-sm"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/messages/start', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ targetUserId: params.id }),
+                          credentials: 'include'
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          window.location.href = '/product/messages';
+                        } else {
+                          toast.error('Failed to start conversation');
+                        }
+                      } catch (e) {
+                        toast.error('Error starting conversation');
+                      }
+                    }}
+                  >
+                    <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    Message
+                  </Button>
+                </>
+              )}
+              {isOwnProfile && (
+                <Button variant="outline" className="w-full sm:w-auto bg-transparent text-xs sm:text-sm" onClick={() => setActiveTab('about')}>
+                  Edit Profile
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -442,7 +472,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                   </div>
 
                   <div className="space-y-2 sm:space-y-3">
-                    <Button 
+                    <Button
                       className="w-full text-xs sm:text-sm"
                       onClick={() => {
                         toast("This feature is enabled in Phase2/Version2", {
@@ -454,8 +484,8 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                       <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                       Book Now
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full bg-transparent text-xs sm:text-sm"
                       onClick={() => {
                         toast("This feature is enabled in Phase2/Version2", {

@@ -276,3 +276,31 @@ CREATE TRIGGER update_post_comments_updated_at
     BEFORE UPDATE ON post_comments 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Personal Direct Messaging
+CREATE TABLE IF NOT EXISTS conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user1_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user2_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    last_message_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user1_id, user2_id),
+    CHECK (user1_id < user2_id) -- Ensure single conversation between two users
+);
+
+CREATE TABLE IF NOT EXISTS direct_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL CHECK (char_length(content) > 0 AND char_length(content) <= 4000),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    read_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Indexes for direct messaging
+CREATE INDEX IF NOT EXISTS idx_conversations_user1_id ON conversations(user1_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_user2_id ON conversations(user2_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_last_message_at ON conversations(last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_direct_messages_conversation_id ON direct_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_direct_messages_sender_id ON direct_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_direct_messages_created_at ON direct_messages(created_at DESC);

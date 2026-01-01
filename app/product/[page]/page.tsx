@@ -17,7 +17,8 @@ type PageMapKey =
   | "events"
   | "profile"
   | "consultation"
-  | "rewards";
+  | "rewards"
+  | "messages";
 
 const pageLoaders: Record<PageMapKey, () => Promise<{ default: React.ComponentType<any> }>> = {
   auth: () => import("../../product/auth/page"),
@@ -33,6 +34,7 @@ const pageLoaders: Record<PageMapKey, () => Promise<{ default: React.ComponentTy
   profile: () => import("../../profile/page").catch(() => ({ default: () => <div>Loading...</div> })),
   consultation: () => import("../../consultation/page"),
   rewards: () => import("../../rewards/page"),
+  messages: () => import("../../product/messages/page"),
 };
 
 export default function ProductAliasPage() {
@@ -44,7 +46,7 @@ export default function ProductAliasPage() {
     notFound();
   }
 
-  const Component = dynamic(loader, { 
+  const Component = dynamic(loader, {
     ssr: false,
     loading: () => <div className="flex items-center justify-center min-h-screen">Loading...</div>
   });
