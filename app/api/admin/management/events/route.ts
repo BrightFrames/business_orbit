@@ -34,10 +34,7 @@ export async function GET(req: NextRequest) {
         attendees: attendeesResult.rows,
       });
     } else {
-      // Get all events with RSVP count (optimized query)
-      // Filter out cancelled events at database level for better performance
-      // Use subquery for RSVP count instead of GROUP BY for better performance
-      // This approach is much faster than LEFT JOIN with GROUP BY
+      // Get all events with RSVP count
       const allEventsQuery = `
         SELECT 
           e.id,
@@ -48,21 +45,23 @@ export async function GET(req: NextRequest) {
           e.status,
           e.meeting_link,
           e.venue_address,
-          COALESCE(rsvp_counts.count, 0)::int AS rsvp_count
+          COUNT(r.id)::int AS rsvp_count
         FROM events e
-        LEFT JOIN LATERAL (
-          SELECT COUNT(*)::int as count
-          FROM rsvps r
-          WHERE r.event_id = e.id
-        ) rsvp_counts ON true
+        LEFT JOIN rsvps r ON e.id = r.event_id
         WHERE LOWER(e.status) != 'cancelled'
+        GROUP BY e.id
         ORDER BY e.date ASC
       `;
       const result = await pool.query(allEventsQuery);
       return NextResponse.json(result.rows, { status: 200 });
     }
   } catch (error: any) {
-    return NextResponse.json({ error: "Failed to fetch admin events" }, { status: 500 });
+    console.error("Error fetching admin events:", error);
+    return NextResponse.json({
+      error: "Failed to fetch admin events",
+      details: error.message,
+      code: error.code
+    }, { status: 500 });
   }
 }
 
@@ -152,7 +151,7 @@ export async function PUT(req: NextRequest) {
           // Send sequentially to avoid API rate spikes; keep it simple & robust
           for (const msg of msgs) {
             // Fire and forget; ignore individual send failures
-            await sgMail.send(msg).catch(() => {});
+            await sgMail.send(msg).catch(() => { });
           }
         }
       } catch (e) {

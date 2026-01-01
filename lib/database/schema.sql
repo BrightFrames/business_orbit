@@ -175,6 +175,23 @@ CREATE TABLE IF NOT EXISTS events (
     status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'completed', 'cancelled')),
     meeting_link VARCHAR(500),
     venue_address VARCHAR(500),
+    host_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Event Proposals table
+CREATE TABLE IF NOT EXISTS event_proposals (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    event_title VARCHAR(255) NOT NULL,
+    event_date TIMESTAMP NOT NULL,
+    mode VARCHAR(50) NOT NULL CHECK (mode IN ('Online', 'Physical')),
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -187,17 +204,27 @@ CREATE TABLE IF NOT EXISTS rsvps (
     UNIQUE(user_id, event_id)
 );
 
--- Indexes for events and rsvps tables
+-- Indexes for events, rsvps and event_proposals tables
 CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
 CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
 CREATE INDEX IF NOT EXISTS idx_events_event_type ON events(event_type);
+CREATE INDEX IF NOT EXISTS idx_events_host_id ON events(host_id);
 CREATE INDEX IF NOT EXISTS idx_rsvps_user_id ON rsvps(user_id);
 CREATE INDEX IF NOT EXISTS idx_rsvps_event_id ON rsvps(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_proposals_status ON event_proposals(status);
+CREATE INDEX IF NOT EXISTS idx_event_proposals_user_id ON event_proposals(user_id);
 
 -- Trigger to automatically update updated_at for events
 DROP TRIGGER IF EXISTS update_events_updated_at ON events;
 CREATE TRIGGER update_events_updated_at 
     BEFORE UPDATE ON events 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger to automatically update updated_at for event_proposals
+DROP TRIGGER IF EXISTS update_event_proposals_updated_at ON event_proposals;
+CREATE TRIGGER update_event_proposals_updated_at 
+    BEFORE UPDATE ON event_proposals 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 

@@ -5,14 +5,14 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  AlertCircle, 
-  CheckCircle, 
-  User, 
-  Shield, 
-  Users, 
-  Activity, 
-  Database, 
+import {
+  AlertCircle,
+  CheckCircle,
+  User,
+  Shield,
+  Users,
+  Activity,
+  Database,
   Clock,
   AlertTriangle,
   Settings,
@@ -68,10 +68,10 @@ export default function AdminSetup() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/admin/setup-admin', {
+      const response = await fetch('/api/admin/auth/setup-admin', {
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users);
@@ -86,7 +86,7 @@ export default function AdminSetup() {
       const response = await fetch('/api/admin/analytics/chat?days=30', {
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setSystemStats({
@@ -152,7 +152,7 @@ export default function AdminSetup() {
 
   const makeAdmin = async (userEmail: string) => {
     try {
-      const response = await fetch('/api/admin/setup-admin', {
+      const response = await fetch('/api/admin/auth/setup-admin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -160,9 +160,9 @@ export default function AdminSetup() {
         credentials: 'include',
         body: JSON.stringify({ email: userEmail })
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok) {
         setMessage(data.message);
         setMessageType('success');
@@ -190,16 +190,16 @@ export default function AdminSetup() {
         withCredentials: true,
       });
       socketRef.current = s;
-      
+
       s.on('connect', () => {
-        try { s.emit('joinAllRooms'); } catch {}
+        try { s.emit('joinAllRooms'); } catch { }
       });
-      
+
       // Refresh data on user activity
       s.on('newMessage', () => {
         fetchSystemStats();
       });
-      
+
       s.on('presence', () => {
         fetchSystemStats();
       });
@@ -207,13 +207,13 @@ export default function AdminSetup() {
       return () => {
         const s2 = socketRef.current;
         if (s2) {
-          try { s2.emit('leaveAllRooms'); } catch {}
+          try { s2.emit('leaveAllRooms'); } catch { }
           s2.disconnect();
           socketRef.current = null;
         }
       };
     } catch {
-      return () => {};
+      return () => { };
     }
   }, []);
 
@@ -277,11 +277,10 @@ export default function AdminSetup() {
 
       {/* Messages */}
       {message && (
-        <div className={`p-3 rounded-lg flex items-center space-x-2 ${
-          messageType === 'success' 
-            ? 'bg-green-50 text-green-700 border border-green-200' 
+        <div className={`p-3 rounded-lg flex items-center space-x-2 ${messageType === 'success'
+            ? 'bg-green-50 text-green-700 border border-green-200'
             : 'bg-red-50 text-red-700 border border-red-200'
-        }`}>
+          }`}>
           {messageType === 'success' ? (
             <CheckCircle className="w-5 h-5" />
           ) : (
@@ -350,10 +349,9 @@ export default function AdminSetup() {
             <Card className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base sm:text-lg font-semibold">System Health</h3>
-                <div className={`p-2 rounded-full ${
-                  systemStats?.systemHealth === 'healthy' ? 'bg-green-100' :
-                  systemStats?.systemHealth === 'warning' ? 'bg-yellow-100' : 'bg-red-100'
-                }`}>
+                <div className={`p-2 rounded-full ${systemStats?.systemHealth === 'healthy' ? 'bg-green-100' :
+                    systemStats?.systemHealth === 'warning' ? 'bg-yellow-100' : 'bg-red-100'
+                  }`}>
                   {systemStats?.systemHealth === 'healthy' ? (
                     <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                   ) : systemStats?.systemHealth === 'warning' ? (

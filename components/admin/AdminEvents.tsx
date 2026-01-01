@@ -82,7 +82,7 @@ export default function AdminEvents() {
       venueAddress: '',
     },
   });
-  
+
   // Watch form values for Select components
   const eventType = watch("eventtype");
   const status = watch("status");
@@ -95,7 +95,7 @@ export default function AdminEvents() {
       const res = await fetch("/api/admin/management/events", {
         credentials: 'include'
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         // Events are already filtered at database level, but keep this as safety check
@@ -106,9 +106,9 @@ export default function AdminEvents() {
         console.error("Failed to fetch events:", errorData);
         setError(`Failed to load events: ${errorData.error || 'Unknown error'}`);
       }
-    } catch (err) {
-      console.error("Failed to fetch events", err);
-      setError('Network error: Failed to connect to server');
+    } catch (err: any) {
+      console.error("Critical error fetching events:", err);
+      setError(`Network error: ${err.message || 'Failed to connect to server'}. Ensure the backend is running.`);
     } finally {
       setLoading(false);
     }
@@ -232,7 +232,7 @@ export default function AdminEvents() {
   // Save event (create or update)
   const onSubmit = async (formData: any) => {
     console.log("Form submitted with data:", formData);
-    
+
     const payload = {
       title: formData.title,
       description: formData.description || "",
@@ -271,9 +271,9 @@ export default function AdminEvents() {
         console.error("API Error:", error);
         setError("Failed to save event: " + (error.error || "Unknown error"));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving event:", err);
-      setError("Error saving event");
+      setError(`Error saving event: ${err.message || 'Unknown error'}`);
     }
   };
 
@@ -281,20 +281,20 @@ export default function AdminEvents() {
   const cancelEvent = async (event: Event) => {
     try {
       if (!confirm('Are you sure you want to cancel this event?')) return;
-      
+
       const res = await fetch('/api/admin/management/events', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
-          id: event.id, 
-          title: event.title, 
-          description: event.description, 
-          date: event.date, 
-          event_type: event.event_type, 
-          meeting_link: event.meeting_link, 
-          venue_address: event.venue_address, 
-          status: 'cancelled' 
+        body: JSON.stringify({
+          id: event.id,
+          title: event.title,
+          description: event.description,
+          date: event.date,
+          event_type: event.event_type,
+          meeting_link: event.meeting_link,
+          venue_address: event.venue_address,
+          status: 'cancelled'
         }),
       });
 
@@ -333,7 +333,7 @@ export default function AdminEvents() {
           <div className="mb-4 mt-12 lg:mt-0">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Admin Event Dashboard</h1>
           </div>
-          <Button 
+          <Button
             onClick={refreshEvents}
             className="bg-black text-white font-semibold px-4 sm:px-6 py-2 rounded-lg hover:bg-gray-800 text-sm sm:text-base"
           >
@@ -343,7 +343,7 @@ export default function AdminEvents() {
         <div className="p-3 sm:p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">
           <p className="font-medium text-sm sm:text-base">Error Loading Events</p>
           <p className="text-xs sm:text-sm mt-1">{error}</p>
-          <Button 
+          <Button
             onClick={refreshEvents}
             variant="outline"
             size="sm"
@@ -363,7 +363,7 @@ export default function AdminEvents() {
         <div className="mb-4 mt-12 lg:mt-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Admin Event Dashboard</h1>
         </div>
-        
+
         {/* Create New Event Button */}
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogTrigger asChild>
@@ -430,7 +430,7 @@ export default function AdminEvents() {
         <div className="p-3 sm:p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg">
           <p className="font-medium text-sm sm:text-base">Error</p>
           <p className="text-xs sm:text-sm mt-1">{error}</p>
-          <Button 
+          <Button
             onClick={() => setError(null)}
             variant="outline"
             size="sm"
@@ -449,7 +449,7 @@ export default function AdminEvents() {
               Pending Event Proposals ({proposals.length})
             </h2>
           </div>
-          
+
           <div className="divide-y divide-orange-200">
             {proposals.map((proposal) => (
               <div key={proposal.id} className="p-4 space-y-3">
@@ -489,7 +489,7 @@ export default function AdminEvents() {
                     <p className="text-sm text-gray-900 line-clamp-2">{proposal.description || 'No description'}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-2 pt-2">
                   <Button
                     size="sm"
@@ -550,27 +550,26 @@ export default function AdminEvents() {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 capitalize">{event.event_type}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        event.status === 'approved' ? 'bg-green-100 text-green-800' :
-                        event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        event.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${event.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            event.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                        }`}>
                         {event.status}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900">{event.rsvp_count || 0}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">
                       <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           onClick={() => onEdit(event)}
                           className="bg-black text-white hover:bg-gray-800"
                         >
                           Edit
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           onClick={() => fetchRSVPs(event.id)}
                           className="bg-black text-white hover:bg-gray-800"
                         >
@@ -605,16 +604,15 @@ export default function AdminEvents() {
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <h3 className="font-medium text-gray-900 text-sm sm:text-base">{event.title}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        event.status === 'approved' ? 'bg-green-100 text-green-800' :
-                        event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        event.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${event.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            event.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                        }`}>
                         {event.status}
                       </span>
                     </div>
-                    
+
                     <div className="space-y-2 text-xs sm:text-sm text-gray-600">
                       <div className="flex items-center justify-between">
                         <span>Date:</span>
@@ -638,15 +636,15 @@ export default function AdminEvents() {
                     </div>
 
                     <div className="flex flex-wrap gap-2 pt-2">
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         onClick={() => onEdit(event)}
                         className="bg-black text-white hover:bg-gray-800 text-xs"
                       >
                         Edit
                       </Button>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         onClick={() => fetchRSVPs(event.id)}
                         className="bg-black text-white hover:bg-gray-800 text-xs"
                       >
