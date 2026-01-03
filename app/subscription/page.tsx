@@ -75,10 +75,58 @@ export default function SubscriptionPage() {
     setSelectedPlan(planId);
   };
 
-  const handleProceedToPay = () => {
-    if (!selectedPlan) return;
-    // Here you would integrate with payment gateway
-    window.location.href = '/product/connection';
+  const handleProceedToPay = async () => {
+    if (!selectedPlan || !user) return;
+
+    setProcessing(true);
+    try {
+      const plan = plans.find(p => p.id === selectedPlan);
+      if (!plan) return;
+
+      // Clean price string to get number (e.g., '₹1000' -> 1000)
+      const amount = parseInt(plan.price.replace(/[^0-9]/g, ''));
+
+      const response = await fetch('/api/payments/phonepe/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: selectedPlan,
+          amount: amount
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to initiate payment');
+      }
+
+      // Create a hidden form and submit it to PhonePe
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = data.apiUrl;
+
+      const base64Input = document.createElement('input');
+      base64Input.type = 'hidden';
+      base64Input.name = 'request';
+      base64Input.value = data.base64Body;
+      form.appendChild(base64Input);
+
+      const checksumInput = document.createElement('input');
+      checksumInput.type = 'hidden';
+      checksumInput.name = 'checksum';
+      checksumInput.value = data.checksum;
+      form.appendChild(checksumInput);
+
+      document.body.appendChild(form);
+      form.submit();
+
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      alert(error.message || 'Something went wrong. Please try again.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   // Show loading while checking authentication
@@ -114,13 +162,12 @@ export default function SubscriptionPage() {
         {/* Subscription Plans */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           {plans.map((plan) => (
-            <Card 
+            <Card
               key={plan.id}
-              className={`relative p-8 shadow-lg border-2 transition-all duration-200 cursor-pointer ${
-                selectedPlan === plan.id 
-                  ? 'border-gray-900 shadow-xl' 
-                  : 'border-gray-200 hover:border-gray-300'
-              } ${plan.popular ? 'pt-12' : ''}`}
+              className={`relative p-8 shadow-lg border-2 transition-all duration-200 cursor-pointer ${selectedPlan === plan.id
+                ? 'border-gray-900 shadow-xl'
+                : 'border-gray-200 hover:border-gray-300'
+                } ${plan.popular ? 'pt-12' : ''}`}
               onClick={() => handlePlanSelect(plan.id)}
             >
               {/* Most Popular Badge */}
@@ -141,7 +188,7 @@ export default function SubscriptionPage() {
                 </div>
                 <p className="text-gray-600">/ {plan.period}</p>
               </div>
-              
+
               <ul className="space-y-4 mb-8">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-center">
@@ -164,15 +211,18 @@ export default function SubscriptionPage() {
         <div className="text-center mb-12">
           <Button
             onClick={handleProceedToPay}
-            disabled={!selectedPlan}
-            className={`px-8 py-4 text-lg rounded-lg transition-all duration-200 ${
-              selectedPlan 
-                ? 'bg-gray-900 text-white hover:bg-gray-800' 
+            disabled={!selectedPlan || processing}
+            className={`px-8 py-4 text-lg rounded-lg transition-all duration-200 ${selectedPlan
+                ? 'bg-gray-900 text-white hover:bg-gray-800'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
+              }`}
           >
-            <Wallet className="h-5 w-5 mr-2" />
-            Proceed to Pay
+            {processing ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+            ) : (
+              <Wallet className="h-5 w-5 mr-2" />
+            )}
+            {processing ? 'Processing...' : 'Proceed to Pay'}
           </Button>
           {!selectedPlan && (
             <p className="text-sm text-gray-500 mt-2">
