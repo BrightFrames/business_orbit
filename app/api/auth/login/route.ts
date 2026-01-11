@@ -74,7 +74,11 @@ export async function POST(request: NextRequest) {
         description: user.description,
         profession: user.profession,
         interest: user.interest,
-        createdAt: user.created_at
+        createdAt: user.created_at,
+        location: user.location || 'Not specified',
+        rewardScore: user.reward_score || 85,
+        mutualConnections: user.mutual_connections || 0,
+        isPremium: user.is_premium || false
       }
     });
 

@@ -11,6 +11,10 @@ export interface UserProfile {
   profession?: string;
   interest?: string;
   createdAt: string;
+  location?: string;
+  rewardScore?: number;
+  mutualConnections?: number;
+  isPremium?: boolean;
 }
 
 export interface UserGroup {

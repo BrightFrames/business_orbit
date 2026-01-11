@@ -72,7 +72,8 @@ const userPosts = [
 export default function ProfilePage({ params }: { params: { id: string } }) {
   const { user: currentUser, loading } = useAuth()
   const [activeTab, setActiveTab] = useState("about")
-  const [isConnected, setIsConnected] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<'not-following' | 'pending' | 'following'>('not-following')
+  const [connectionLoading, setConnectionLoading] = useState(false)
   const [profileData, setProfileData] = useState<UserProfile | null>(null)
   const [userGroups, setUserGroups] = useState<UserGroup[]>([])
   const [loadingProfile, setLoadingProfile] = useState(true)
@@ -122,8 +123,72 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
     fetchUserProfile()
   }, [currentUser, loading, params.id])
 
-  const handleConnect = () => {
-    setIsConnected(!isConnected)
+  // Fetch connection status
+  useEffect(() => {
+    const fetchConnectionStatus = async () => {
+      if (!currentUser || loading || String(currentUser.id) === String(params.id)) return
+
+      try {
+        const response = await fetch(`/api/follow?checkStatus=true&userIds=${params.id}`, {
+          credentials: 'include'
+        })
+        const data = await response.json()
+        if (data.success && data.followStatus) {
+          const status = data.followStatus[parseInt(params.id)]
+          setConnectionStatus(status || 'not-following')
+        }
+      } catch (error) {
+        console.error('Error fetching connection status:', error)
+      }
+    }
+
+    fetchConnectionStatus()
+  }, [currentUser, loading, params.id])
+
+  const handleConnect = async () => {
+    setConnectionLoading(true)
+    try {
+      const response = await fetch('/api/follow-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ targetUserId: parseInt(params.id) })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setConnectionStatus('pending')
+        toast.success('Connection request sent!')
+      } else {
+        toast.error(data.error || 'Failed to send request')
+      }
+    } catch (error) {
+      toast.error('Failed to send connection request')
+    } finally {
+      setConnectionLoading(false)
+    }
+  }
+
+  const handleDisconnect = async () => {
+    setConnectionLoading(true)
+    try {
+      const response = await fetch('/api/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ targetUserId: parseInt(params.id), action: 'unfollow' })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setConnectionStatus('not-following')
+        toast.success('Disconnected successfully!')
+      } else {
+        toast.error(data.error || 'Failed to disconnect')
+      }
+    } catch (error) {
+      toast.error('Failed to disconnect')
+    } finally {
+      setConnectionLoading(false)
+    }
   }
 
   const isOwnProfile = Boolean(
@@ -305,14 +370,48 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-3 pt-2 sm:pt-4">
               {!isOwnProfile && (
                 <>
-                  <Button
-                    variant={isConnected ? "secondary" : "default"}
-                    onClick={handleConnect}
-                    className="w-full sm:w-auto text-xs sm:text-sm"
-                  >
-                    <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    {isConnected ? "Connected" : "Connect"}
-                  </Button>
+                  {connectionStatus === 'following' ? (
+                    <Button
+                      variant="secondary"
+                      onClick={handleDisconnect}
+                      disabled={connectionLoading}
+                      className="w-full sm:w-auto text-xs sm:text-sm"
+                    >
+                      {connectionLoading ? (
+                        <span className="animate-pulse">Processing...</span>
+                      ) : (
+                        <>
+                          <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                          Connected (Click to Disconnect)
+                        </>
+                      )}
+                    </Button>
+                  ) : connectionStatus === 'pending' ? (
+                    <Button
+                      variant="outline"
+                      disabled
+                      className="w-full sm:w-auto text-xs sm:text-sm bg-gray-100"
+                    >
+                      <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      Request Sent
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="default"
+                      onClick={handleConnect}
+                      disabled={connectionLoading}
+                      className="w-full sm:w-auto text-xs sm:text-sm"
+                    >
+                      {connectionLoading ? (
+                        <span className="animate-pulse">Sending...</span>
+                      ) : (
+                        <>
+                          <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                          Connect
+                        </>
+                      )}
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     className="w-full sm:w-auto bg-transparent text-xs sm:text-sm"

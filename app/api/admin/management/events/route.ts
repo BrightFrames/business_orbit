@@ -53,7 +53,12 @@ export async function GET(req: NextRequest) {
         ORDER BY e.date ASC
       `;
       const result = await pool.query(allEventsQuery);
-      return NextResponse.json(result.rows, { status: 200 });
+      return NextResponse.json(result.rows, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        }
+      });
     }
   } catch (error: any) {
     console.error("Error fetching admin events:", error);

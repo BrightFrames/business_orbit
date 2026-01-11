@@ -139,38 +139,73 @@ export default function MessagesPage() {
         }
     }, [activeConversation?.id, user?.id])
 
-    const handleSendMessage = (e?: React.FormEvent) => {
+    const handleSendMessage = async (e?: React.FormEvent) => {
         e?.preventDefault()
-        if (!input.trim() || !activeConversation || !user || !socketRef.current) return
+        if (!input.trim() || !activeConversation || !user) return
 
-        const payload = {
-            conversationId: activeConversation.id,
-            senderId: String(user.id),
-            content: input,
-            recipientId: String(activeConversation.otherUser.id)
-        }
+        const messageContent = input.trim()
+        setInput("")
 
         // Optimistic update
         const tempMsg: Message = {
             id: `tmp-${Date.now()}`,
             conversationId: activeConversation.id,
             senderId: String(user.id),
-            content: input,
+            content: messageContent,
             createdAt: new Date().toISOString(),
             readAt: null
         }
         setMessages(prev => [...prev, tempMsg])
-        setInput("")
 
-        socketRef.current.emit('dm:send', payload, (ack: any) => {
-            if (ack?.ok) {
-                setMessages(prev => prev.map(m => m.id === tempMsg.id ? ack.message : m))
+        // Try Socket.IO first, fallback to HTTP API
+        if (socketRef.current?.connected) {
+            const payload = {
+                conversationId: activeConversation.id,
+                senderId: String(user.id),
+                content: messageContent,
+                recipientId: String(activeConversation.otherUser.id)
+            }
+
+            socketRef.current.emit('dm:send', payload, (ack: any) => {
+                if (ack?.ok) {
+                    setMessages(prev => prev.map(m => m.id === tempMsg.id ? ack.message : m))
+                    refreshConversations()
+                } else {
+                    // Socket failed, try HTTP fallback
+                    sendMessageViaHttp(tempMsg, messageContent)
+                }
+            })
+        } else {
+            // Socket not connected, use HTTP API directly
+            await sendMessageViaHttp(tempMsg, messageContent)
+        }
+    }
+
+    const sendMessageViaHttp = async (tempMsg: Message, messageContent: string) => {
+        try {
+            const res = await fetch('/api/messages/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    conversationId: activeConversation?.id,
+                    content: messageContent
+                })
+            })
+            const data = await res.json()
+            if (data.success && data.message) {
+                setMessages(prev => prev.map(m => m.id === tempMsg.id ? data.message : m))
                 refreshConversations()
             } else {
-                // Handle error
+                // Remove optimistic message on failure
                 setMessages(prev => prev.filter(m => m.id !== tempMsg.id))
+                console.error('Failed to send message:', data.error)
             }
-        })
+        } catch (error) {
+            console.error('HTTP send error:', error)
+            // Remove optimistic message on failure
+            setMessages(prev => prev.filter(m => m.id !== tempMsg.id))
+        }
     }
 
     const filteredConversations = conversations.filter(c =>
@@ -294,8 +329,8 @@ export default function MessagesPage() {
                                                     <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                                         <div className={`max-w-[70%] group relative ${isMe ? 'text-right' : 'text-left'}`}>
                                                             <div className={`inline-block px-4 py-2.5 rounded-2xl text-sm ${isMe
-                                                                    ? 'bg-blue-600 text-white shadow-sm rounded-tr-none'
-                                                                    : 'bg-background border border-border/50 text-foreground shadow-sm rounded-tl-none'
+                                                                ? 'bg-blue-600 text-white shadow-sm rounded-tr-none'
+                                                                : 'bg-background border border-border/50 text-foreground shadow-sm rounded-tl-none'
                                                                 }`}>
                                                                 {msg.content}
                                                             </div>

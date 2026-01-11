@@ -139,6 +139,10 @@ export async function GET(request: NextRequest) {
         chapters: chapters,
         people: people,
         events: events
+      }, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        }
       })
     } finally {
       client.release()

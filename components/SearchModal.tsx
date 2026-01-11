@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Search, X } from "lucide-react"
+import { Search, X, Loader2 } from "lucide-react"
 
 type SearchCategory = "people" | "chapter" | "events" | null
 
@@ -22,7 +22,7 @@ interface SearchModalProps {
 
 export default function SearchModal({ open, onClose }: SearchModalProps) {
   const [q, setQ] = useState("")
-  const [category, setCategory] = useState<SearchCategory>(null)
+  const [category, setCategory] = useState<SearchCategory>("people")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<SearchResult | null>(null)
@@ -31,7 +31,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   useEffect(() => {
     if (!open) {
       setQ("")
-      setCategory(null)
+      setCategory("people")
       setData(null)
       setError(null)
       setLoading(false)
@@ -46,27 +46,54 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     }
   }, [open])
 
-  const runSearch = async () => {
+  const runSearch = useCallback(async (searchQuery: string, searchCategory: SearchCategory) => {
+    if (!searchQuery.trim()) {
+      setData(null)
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
       const params: any = {
-        q: q,
-        limit: '5'
+        q: searchQuery,
+        limit: '10'
       }
-      if (category) {
-        params.category = category
+      if (searchCategory) {
+        params.category = searchCategory
       }
-      const res = await fetch(`/api/search?${new URLSearchParams(params).toString()}`, { credentials: 'include' })
+      const url = `/api/search?${new URLSearchParams(params).toString()}`
+      console.log('[SearchModal] Fetching:', url)
+
+      const res = await fetch(url, { credentials: 'include' })
       const json = await res.json()
+
+      console.log('[SearchModal] Response:', json)
+
       if (!res.ok || json.success === false) throw new Error(json.error || 'Search failed')
       setData(json)
     } catch (e: any) {
+      console.error('[SearchModal] Error:', e)
       setError(e.message || 'Search failed')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  // Live search with debounce - search as you type
+  useEffect(() => {
+    if (!open) return
+
+    const timeoutId = setTimeout(() => {
+      if (q.trim()) {
+        runSearch(q, category)
+      } else {
+        setData(null)
+      }
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [q, category, open, runSearch])
 
   if (!open) return null
 
@@ -110,31 +137,32 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           </div>
 
           <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
+            {loading ? (
+              <Loader2 className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10 animate-spin" />
+            ) : (
+              <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
+            )}
             <Input
               ref={inputRef}
               aria-label="Search"
               placeholder={
                 category === "people"
-                  ? "Type to search people by name"
+                  ? "Type a name to search people..."
                   : category === "chapter"
-                    ? "Type to search chapters by location or name"
+                    ? "Type to search chapters..."
                     : category === "events"
-                      ? "Type to search events by title"
-                      : "Type to search people, chapters, or events"
+                      ? "Type to search events..."
+                      : "Type to search..."
               }
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-              className="pl-12 h-12 text-base placeholder:text-muted-foreground ring-1 ring-border focus-visible:ring-2 focus-visible:ring-foreground/30"
+              className="pl-12 pr-4 h-12 text-base placeholder:text-muted-foreground ring-1 ring-border focus-visible:ring-2 focus-visible:ring-foreground/30"
             />
           </div>
 
-          <div className="mt-3">
-            <Button onClick={runSearch} disabled={!q.trim() || loading} className="w-full sm:w-auto">
-              {loading ? 'Searching...' : 'Search'}
-            </Button>
-          </div>
+          {loading && q.trim() && (
+            <div className="mt-3 text-sm text-muted-foreground">Searching...</div>
+          )}
 
           {error && (
             <div className="mt-3 text-sm text-red-600">{error}</div>
@@ -153,7 +181,14 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                       category === "people" && <p className="text-sm text-muted-foreground">No people found</p>
                     ) : (
                       data.people.map((p) => (
-                        <Card key={p.id} className="p-3 hover:bg-accent/30 transition-colors">
+                        <Card
+                          key={p.id}
+                          className="p-3 hover:bg-accent/30 transition-colors cursor-pointer"
+                          onClick={() => {
+                            onClose()
+                            window.location.href = `/profile/${p.id}`
+                          }}
+                        >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold uppercase overflow-hidden">

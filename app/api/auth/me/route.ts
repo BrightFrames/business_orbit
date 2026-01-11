@@ -33,20 +33,24 @@ export async function GET(request: NextRequest) {
         profession: user.profession,
         interest: user.interest,
         createdAt: user.created_at,
-        isAdmin: user.is_admin || false
+        isAdmin: user.is_admin || false,
+        location: user.location || 'Not specified',
+        rewardScore: user.reward_score || 85,
+        mutualConnections: user.mutual_connections || 0,
+        isPremium: user.is_premium || false
       }
     });
   } catch (error: any) {
     // If it's a token-related error, return 401 to trigger re-authentication
-    if (error.message === 'Access token required' || 
-        error.message === 'Invalid token' || 
-        error.message === 'User not found') {
+    if (error.message === 'Access token required' ||
+      error.message === 'Invalid token' ||
+      error.message === 'User not found') {
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 401 }
       );
     }
-    
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

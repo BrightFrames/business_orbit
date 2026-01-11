@@ -16,8 +16,13 @@ interface User {
   description?: string;
   profession?: string;
   interest?: string;
+  expertise?: string[];
   createdAt: string;
   isAdmin?: boolean;
+  location?: string;
+  rewardScore?: number;
+  mutualConnections?: number;
+  isPremium?: boolean;
 }
 
 interface AuthContextType {
@@ -78,12 +83,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
         setIsNewUser(false); // Existing user checking auth
-        
+
         // Check onboarding status - only if user exists
         try {
           const prefsResponse = await fetch(`/api/preferences/${data.user.id}`, {
@@ -98,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch (prefsError) {
           setOnboardingCompleted(false);
         }
-        
+
         // Check if user has sent any invites
         try {
           const invitesResponse = await fetch('/api/invites/has-sent', {
@@ -118,16 +123,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null);
         setOnboardingCompleted(false);
         setInviteSent(false);
-        
+
         // Clear any invalid token from cookies
         clearTokenCookie();
-        
+
         if (typeof window !== 'undefined') {
           const path = window.location.pathname || '';
           const publicProductPaths = ['/product', '/product/', '/product/auth'];
           const isProduct = path.startsWith('/product');
           const isPublic = publicProductPaths.some(p => path.startsWith(p));
-          
+
           // If on product pages and not public, redirect to auth
           if (isProduct && !isPublic) {
             window.location.href = '/product/auth';
@@ -141,7 +146,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       setOnboardingCompleted(false);
       setInviteSent(false);
-      
+
       // Clear the token cookie on error
       clearTokenCookie();
     } finally {
@@ -164,7 +169,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const data = await response.json();
         setUser(data.user);
         setIsNewUser(false); // Existing user logging in
-        
+
         // Check if user has completed onboarding
         try {
           const prefsResponse = await fetch(`/api/preferences/${data.user.id}`, {
@@ -179,7 +184,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch (prefsError) {
           setOnboardingCompleted(false);
         }
-        
+
         toast.success('Login successful!');
         return { success: true };
       } else {
@@ -210,11 +215,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const data = await response.json();
         setUser(data.user);
         setIsNewUser(true); // New user signing up
-        
+
         // New users haven't completed onboarding
         setOnboardingCompleted(false);
         setInviteSent(false);
-        
+
         toast.success('Account created successfully!');
         return { success: true };
       } else {
@@ -239,7 +244,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       setOnboardingCompleted(false);
       setInviteSent(false);
-      
+
       // Clear token cookie on client side as well
       clearTokenCookie();
       if (typeof window !== 'undefined') {
@@ -251,7 +256,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       setOnboardingCompleted(false);
       setInviteSent(false);
-      
+
       clearTokenCookie();
       if (typeof window !== 'undefined') {
         toast.success('Logged out successfully!');

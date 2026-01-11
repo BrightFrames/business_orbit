@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   if (process.env.VERCEL || !pool) {
     return proxyToBackend(request, '/api/auth/signup');
   }
-  
+
   // Declare variables at function scope so they're accessible in catch block
   let name: string = '', email: string = '', phone: string = '', password: string = '', confirmPassword: string = '';
   let skills: string = '', description: string = '', profession: string = '', interest: string = '';
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const formData = await request.formData();
-    
+
     name = formData.get('name') as string;
     email = formData.get('email') as string;
     phone = formData.get('phone') as string;
@@ -81,8 +81,8 @@ export async function POST(request: NextRequest) {
         skillsArray = JSON.parse(skills);
         if (!Array.isArray(skillsArray)) {
           skillsArray = [];
-      }
-    } catch (error) {
+        }
+      } catch (error) {
         skillsArray = [];
       }
     }
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
             ],
             resource_type: 'image'
           })
-          
+
           profilePhotoUrl = profilePhotoResult.secure_url || profilePhotoResult.url;
           profilePhotoId = profilePhotoResult.public_id;
         } else {
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
             ],
             resource_type: 'image'
           })
-          
+
           bannerUrl = bannerResult.secure_url || bannerResult.url;
           bannerId = bannerResult.public_id;
         } else {
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert user into database
-    
+
     // First, try to add the profession column if it doesn't exist
     try {
       await pool.query(`
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
     } catch (columnError: any) {
       // Column might already exist, that's okay - ignore the error
     }
-    
+
     const result = await pool.query(
       `INSERT INTO users (name, email, phone, password_hash, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -224,7 +224,11 @@ export async function POST(request: NextRequest) {
         description: user.description,
         profession: user.profession,
         interest: user.interest,
-        createdAt: user.created_at
+        createdAt: user.created_at,
+        location: user.location || 'Not specified',
+        rewardScore: user.reward_score || 85,
+        mutualConnections: user.mutual_connections || 0,
+        isPremium: user.is_premium || false
       }
     }, { status: 201 });
 
@@ -241,7 +245,7 @@ export async function POST(request: NextRequest) {
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       email: email || 'unknown'
     });
-    
+
     // Provide more specific error messages
     if (error.code === '23505') {
       return NextResponse.json(
@@ -249,14 +253,14 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     if (error.code === '42P01') {
       return NextResponse.json(
         { error: 'Database table not found. Please run the database setup.' },
         { status: 500 }
       );
     }
-    
+
     if (error.code === '42703') {
       // Column doesn't exist - try to add it and retry
       // Only retry if we have all the required data
@@ -266,11 +270,11 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
-      
+
       try {
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profession VARCHAR(255)`);
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interest VARCHAR(255)`);
-        
+
         // Retry the insert with all fields
         const result = await pool.query(
           `INSERT INTO users (name, email, phone, password_hash, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest)
@@ -278,10 +282,10 @@ export async function POST(request: NextRequest) {
            RETURNING id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, created_at`,
           [name || '', email || '', phone || '', passwordHash, profilePhotoUrl, profilePhotoId, bannerUrl, bannerId, skillsArray, description || '', profession || null, interest || null]
         );
-        
+
         const user = result.rows[0];
         const token = generateToken(user.id);
-        
+
         const response = NextResponse.json({
           message: 'User created successfully',
           user: {
@@ -295,13 +299,17 @@ export async function POST(request: NextRequest) {
             description: user.description,
             profession: user.profession,
             interest: user.interest,
-            createdAt: user.created_at
+            createdAt: user.created_at,
+            location: user.location || 'Not specified',
+            rewardScore: user.reward_score || 85,
+            mutualConnections: user.mutual_connections || 0,
+            isPremium: user.is_premium || false
           }
         }, { status: 201 });
-        
+
         setTokenCookie(response, token);
         return response;
-        
+
       } catch (retryError: any) {
         return NextResponse.json(
           { error: 'Database schema issue. Please contact support.' },
@@ -309,28 +317,28 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    
+
     if (error.code === 'ECONNREFUSED') {
       return NextResponse.json(
         { error: 'Database connection failed. Please check if PostgreSQL is running.' },
         { status: 500 }
       );
     }
-    
+
     if (error.code === '28P01') {
       return NextResponse.json(
         { error: 'Database authentication failed. Please check your database credentials.' },
         { status: 500 }
       );
     }
-    
+
     // Return detailed error in development, generic in production
-    const errorMessage = process.env.NODE_ENV === 'development' 
-      ? error.message 
+    const errorMessage = process.env.NODE_ENV === 'development'
+      ? error.message
       : 'Something went wrong. Please try again or contact support.';
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         details: errorMessage,
         ...(process.env.NODE_ENV === 'development' && { code: error.code })

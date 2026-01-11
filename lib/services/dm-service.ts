@@ -1,4 +1,5 @@
 import pool from '@/lib/config/database';
+import { compressMessage, decompressMessage } from '@/lib/utils/compression';
 
 export interface DirectMessage {
     id: string;
@@ -93,7 +94,7 @@ class DMService {
                 profilePhotoUrl: row.otherUserProfilePhoto
             },
             lastMessage: row.lastMessageContent ? {
-                content: row.lastMessageContent,
+                content: decompressMessage(row.lastMessageContent),
                 createdAt: row.lastMessageCreatedAt.toISOString(),
                 senderId: row.lastMessageSenderId.toString()
             } : undefined,
@@ -125,6 +126,7 @@ class DMService {
         const messages = res.rows.map(row => ({
             ...row,
             senderId: row.senderId.toString(),
+            content: decompressMessage(row.content),
             createdAt: row.createdAt.toISOString(),
             readAt: row.readAt ? row.readAt.toISOString() : null
         }));
@@ -146,11 +148,14 @@ class DMService {
         try {
             await client.query('BEGIN');
 
+            // Compress the message content before storing
+            const compressedContent = compressMessage(content);
+
             const res = await client.query(
                 `INSERT INTO direct_messages (conversation_id, sender_id, content)
          VALUES ($1, $2, $3)
          RETURNING id, created_at`,
-                [conversationId, senderId, content]
+                [conversationId, senderId, compressedContent]
             );
 
             await client.query(

@@ -322,19 +322,19 @@ export default function ProfilePage() {
                     <p className="text-sm sm:text-base md:text-lg text-muted-foreground">{user.profession || "Professional"}</p>
 
                     <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 lg:space-x-4 text-xs sm:text-sm text-muted-foreground">
-                      {(user as any).location && (
+                      {user.location && (
                         <div className="flex items-center justify-center lg:justify-start">
                           <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                          {(user as any).location}
+                          {user.location}
                         </div>
                       )}
                       <Badge variant="secondary" className="flex items-center justify-center w-fit mx-auto lg:mx-0">
                         <Award className="w-3 h-3 mr-1" />
-                        Score: {(user as any).rewardScore || 85}
+                        Score: {user.rewardScore || 85}
                       </Badge>
                       <div className="flex items-center justify-center lg:justify-start">
                         <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                        {(user as any).mutualConnections || 12} mutual connections
+                        {user.mutualConnections || 12} mutual connections
                       </div>
                     </div>
                   </div>
@@ -633,7 +633,7 @@ export default function ProfilePage() {
                     <Card className="p-3 sm:p-4 md:p-6">
                       <h4 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Expertise Areas</h4>
                       <div className="space-y-2 sm:space-y-3">
-                        {((user as any).expertise && (user as any).expertise.length > 0 ? (user as any).expertise : [
+                        {(user.expertise && user.expertise.length > 0 ? user.expertise : [
                           "Product Strategy & Roadmapping",
                           "AI/ML Product Development",
                           "Team Leadership & Management",

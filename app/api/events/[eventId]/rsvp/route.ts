@@ -38,8 +38,16 @@ export async function POST(
     const event = eventRes.rows[0];
 
     if (!event) {
+      // Check if event exists but is not approved
+      const anyEventRes = await pool.query("SELECT status FROM events WHERE id = $1", [parsedEventId]);
+      if (anyEventRes.rows.length > 0) {
+        return NextResponse.json(
+          { success: false, message: `Event is currently ${anyEventRes.rows[0].status}. Only approved events can be joined.` },
+          { status: 403 }
+        );
+      }
       return NextResponse.json(
-        { success: false, message: "Event not found or not approved" },
+        { success: false, message: "Event not found" },
         { status: 404 }
       );
     }
@@ -99,7 +107,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: "RSVP confirmed! Check your email for details.",
+      message: "RSVP confirmed! Check your email for details (it may take a few minutes).",
     });
   } catch (error) {
     console.error("Unexpected error:", error);

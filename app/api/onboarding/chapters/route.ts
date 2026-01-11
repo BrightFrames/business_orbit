@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromToken(request)
     if (!user) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: false,
         error: 'Unauthorized',
         message: 'Authentication required'
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { locations } = body
-    
+
     // Validate input
     if (!Array.isArray(locations)) {
       return NextResponse.json({
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         message: 'Locations must be an array'
       }, { status: 400 })
     }
-    
+
     if (locations.length < 1) {
       return NextResponse.json({
         success: false,
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // Sanitize locations
     const sanitizedLocations = locations.map((loc: string) => loc.trim()).filter(loc => loc.length > 0)
-    
+
     if (sanitizedLocations.length < 1) {
       return NextResponse.json({
         success: false,
@@ -50,25 +50,25 @@ export async function POST(request: NextRequest) {
       'SELECT id, name, location_city FROM chapters WHERE LOWER(location_city) = ANY($1::text[])',
       [sanitizedLocations.map(loc => loc.toLowerCase())]
     )
-    
+
     if (result.rows.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: false,
         error: 'No matching chapters',
-        message: 'No chapters found for the selected locations. Admin needs to create chapters for these cities first.',
+        message: 'We currently don\'t have chapters in your selected cities. Our team is expanding rapidly!',
         details: {
           requested: sanitizedLocations,
-          suggestion: 'Ask admin to create chapters for: ' + sanitizedLocations.join(', ')
+          suggestion: 'Please try selecting a major city nearby or contact support to request a new chapter.'
         }
       }, { status: 404 })
     }
-    
+
     // Check if some locations were not found (but allow partial success)
-    const foundLocations = result.rows.map(row => row.location_city)
-    const missingLocations = sanitizedLocations.filter(loc => 
-      !foundLocations.some(found => found.toLowerCase() === loc.toLowerCase())
+    const foundLocations = result.rows.map((row: any) => row.location_city as string)
+    const missingLocations = sanitizedLocations.filter(loc =>
+      !foundLocations.some((found: string) => found.toLowerCase() === loc.toLowerCase())
     )
-    
+
     if (missingLocations.length > 0 && result.rows.length < sanitizedLocations.length) {
       // Some locations not found, but we have at least 1 valid chapter
       // Continue with the found chapters, but log a warning
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
-      
+
       let insertedCount = 0
       for (const row of result.rows) {
         const insertResult = await client.query(
@@ -93,14 +93,14 @@ export async function POST(request: NextRequest) {
           insertedCount++
         }
       }
-      
+
       await client.query('COMMIT')
-      
-      return NextResponse.json({ 
+
+      return NextResponse.json({
         success: true,
         message: `Successfully joined ${insertedCount} chapters`,
         memberships: insertedCount,
-        chapters: result.rows.map(row => ({
+        chapters: result.rows.map((row: any) => ({
           id: row.id,
           name: row.name,
           location_city: row.location_city
@@ -121,8 +121,8 @@ export async function POST(request: NextRequest) {
         message: 'User or chapter does not exist'
       }, { status: 400 })
     }
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       success: false,
       error: 'Failed to create memberships',
       message: 'Database error occurred while creating chapter memberships'

@@ -192,12 +192,41 @@ export default function AdminEvents() {
     }
   };
 
-  // Auto-refresh every 60 seconds (reduced frequency for better performance)
+  // Initial parallel fetch + auto-refresh every 60 seconds
   useEffect(() => {
+    // Fetch both events and proposals in parallel on mount
+    const fetchInitialData = async () => {
+      setLoading(true);
+      try {
+        const [eventsRes, proposalsRes] = await Promise.all([
+          fetch("/api/admin/management/events", { credentials: 'include' }),
+          fetch("/api/event-proposals?status=pending")
+        ]);
+
+        if (eventsRes.ok) {
+          const eventsData = await eventsRes.json();
+          setEvents(Array.isArray(eventsData) ? eventsData : []);
+        }
+
+        if (proposalsRes.ok) {
+          const proposalsData = await proposalsRes.json();
+          setProposals(proposalsData);
+        }
+      } catch (err: any) {
+        console.error("Error fetching initial data:", err);
+        setError(`Network error: ${err.message || 'Failed to connect to server'}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
+
+    // Auto-refresh every 60 seconds
     const interval = setInterval(() => {
       fetchEvents();
       fetchProposals();
-    }, 60000); // Changed from 30000 to 60000 (30s to 60s)
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);
@@ -551,9 +580,9 @@ export default function AdminEvents() {
                     <td className="px-4 py-3 text-sm text-gray-900 capitalize">{event.event_type}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${event.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            event.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
+                        event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          event.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
                         }`}>
                         {event.status}
                       </span>
@@ -605,9 +634,9 @@ export default function AdminEvents() {
                     <div className="flex items-start justify-between">
                       <h3 className="font-medium text-gray-900 text-sm sm:text-base">{event.title}</h3>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${event.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            event.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
+                        event.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          event.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
                         }`}>
                         {event.status}
                       </span>
