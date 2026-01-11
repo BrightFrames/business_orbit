@@ -205,26 +205,31 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
         ) : (
           suggestions.map((suggestion) => (
             <div key={suggestion.id} className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                {suggestion.profile_photo_url ? (
-                  <img
-                    src={suggestion.profile_photo_url}
-                    alt={suggestion.name}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="text-xs font-semibold">
-                    {suggestion.name.charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate">{suggestion.name}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {suggestion.chapters && suggestion.chapters.length > 0 && (
-                    <span>{suggestion.chapters[0].chapter_name}</span>
+              <div
+                className="flex items-center space-x-2 flex-1 min-w-0 cursor-pointer hover:bg-muted/50 rounded-md p-1 -m-1 transition-colors"
+                onClick={() => window.location.href = `/profile/${suggestion.id}`}
+              >
+                <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
+                  {suggestion.profile_photo_url ? (
+                    <img
+                      src={suggestion.profile_photo_url}
+                      alt={suggestion.name}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs font-semibold">
+                      {suggestion.name.charAt(0).toUpperCase()}
+                    </span>
                   )}
-                </p>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate hover:underline">{suggestion.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {suggestion.chapters && suggestion.chapters.length > 0 && (
+                      <span>{suggestion.chapters[0].chapter_name}</span>
+                    )}
+                  </p>
+                </div>
               </div>
               <Button
                 size="sm"
@@ -253,5 +258,3 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
     </Card>
   )
 }
-
-

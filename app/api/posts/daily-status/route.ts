@@ -22,15 +22,13 @@ export async function GET(request: NextRequest) {
 
     const userId = decoded; // verifyToken returns userId directly, not an object
 
-    const client = await pool.connect();
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      // Check daily post count
-      const dailyPostQuery = `
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Check daily post count
+    const dailyPostQuery = `
         SELECT COUNT(*) as post_count
         FROM posts 
         WHERE user_id = $1 
@@ -38,35 +36,32 @@ export async function GET(request: NextRequest) {
         AND created_at < $3
         AND status IN ('published', 'scheduled')
       `;
-      
-      const dailyPostResult = await client.query(dailyPostQuery, [
-        userId,
-        today,
-        tomorrow
-      ]);
-      
-      const dailyPostCount = parseInt(dailyPostResult.rows[0].post_count);
-      const canPost = dailyPostCount < 1;
-      
-      // Calculate time until next post is allowed (next day)
-      const nextPostTime = new Date(tomorrow);
-      
-      return NextResponse.json({
-        success: true,
-        data: {
-          canPost,
-          dailyPostCount,
-          maxPostsPerDay: 1,
-          remainingPosts: Math.max(0, 1 - dailyPostCount),
-          nextPostAllowedAt: nextPostTime.toISOString(),
-          message: canPost 
-            ? 'You can post today!' 
-            : 'Daily post limit reached. You can post again tomorrow.'
-        }
-      });
-    } finally {
-      client.release();
-    }
+
+    const dailyPostResult = await pool.query(dailyPostQuery, [
+      userId,
+      today,
+      tomorrow
+    ]);
+
+    const dailyPostCount = parseInt(dailyPostResult.rows[0].post_count);
+    const canPost = dailyPostCount < 1;
+
+    // Calculate time until next post is allowed (next day)
+    const nextPostTime = new Date(tomorrow);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        canPost,
+        dailyPostCount,
+        maxPostsPerDay: 1,
+        remainingPosts: Math.max(0, 1 - dailyPostCount),
+        nextPostAllowedAt: nextPostTime.toISOString(),
+        message: canPost
+          ? 'You can post today!'
+          : 'Daily post limit reached. You can post again tomorrow.'
+      }
+    });
   } catch (error) {
     console.error('Error checking daily post status:', error);
     return NextResponse.json(

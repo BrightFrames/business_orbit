@@ -88,8 +88,10 @@ export async function POST(request: NextRequest) {
     return response;
 
   } catch (error: any) {
+    console.error('[Login] Error:', error?.message || error);
+    console.error('[Login] Stack:', error?.stack);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error?.message },
       { status: 500 }
     );
   }

@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
 
     // Fetch all members with their chapter information grouped by user (excluding current user)
     const currentUserId = parseInt(String(user.id))
-    console.log(`[API/Members] Filtering for current user ID: ${currentUserId} (type in JS: ${typeof currentUserId})`);
 
     const result = await pool.query(`
       SELECT 

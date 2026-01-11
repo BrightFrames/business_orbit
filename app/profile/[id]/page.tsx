@@ -14,6 +14,7 @@ import { MapPin, MessageCircle, UserPlus, Calendar, Star, Award, Users, Lock, Do
 import { useAuth } from "@/contexts/AuthContext"
 import { Upload } from "lucide-react"
 import toast from "react-hot-toast"
+import { BookingModal } from '@/components/consultations/BookingModal'
 
 const profileData = {
   id: "sarah-chen",
@@ -78,6 +79,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   const [userGroups, setUserGroups] = useState<UserGroup[]>([])
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [uploading, setUploading] = useState<{ profile: boolean; banner: boolean }>({ profile: false, banner: false })
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
 
   // Fetch user profile data
   useEffect(() => {
@@ -266,8 +268,8 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         <div
           className="h-24 sm:h-32 md:h-40 lg:h-48 bg-muted relative overflow-hidden group"
           style={{
-            backgroundImage: (profileData.bannerUrl || (currentUser as any)?.bannerUrl)
-              ? `url("${profileData.bannerUrl || (currentUser as any)?.bannerUrl}")`
+            backgroundImage: profileData.bannerUrl
+              ? `url("${profileData.bannerUrl}")`
               : `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23000000' fillOpacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
           }}
         >
@@ -293,9 +295,9 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
             {/* Profile Picture and Basic Info */}
             <div className="flex flex-col items-center lg:items-start">
               <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 bg-background rounded-full border-4 border-background shadow-lg flex items-center justify-center text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 sm:mb-3 overflow-hidden relative group">
-                {(profileData.profilePhotoUrl || (currentUser as any)?.profilePhotoUrl) ? (
+                {profileData.profilePhotoUrl ? (
                   <img
-                    src={profileData.profilePhotoUrl || (currentUser as any)?.profilePhotoUrl}
+                    src={profileData.profilePhotoUrl}
                     alt={profileData.name}
                     className="w-full h-full object-cover"
                   />
@@ -582,30 +584,28 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                     ) : (
                       <Button
                         className="w-full text-xs sm:text-sm"
-                        onClick={() => {
-                          toast("This feature is enabled in Phase2/Version2", {
-                            icon: "📹",
-                            duration: 3000,
-                          })
-                        }}
+                        onClick={() => setIsBookingModalOpen(true)}
                       >
                         <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                         Book Now
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      className="w-full bg-transparent text-xs sm:text-sm"
-                      onClick={() => {
-                        toast("This feature is enabled in Phase2/Version2", {
-                          icon: "📹",
-                          duration: 3000,
-                        })
-                      }}
-                    >
-                      View Available Slots
-                    </Button>
                   </div>
+
+                  {isBookingModalOpen && profileData && (
+                    <BookingModal
+                      expert={{
+                        id: parseInt(params.id) || 0,
+                        name: profileData.name,
+                        hourly_rate: String((profileData as any).consultationRate || 150)
+                      }}
+                      isOpen={isBookingModalOpen}
+                      onClose={() => setIsBookingModalOpen(false)}
+                      onSuccess={() => {
+                        // Optionally refresh or redirect
+                      }}
+                    />
+                  )}
                 </div>
               </Card>
 

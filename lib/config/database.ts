@@ -54,12 +54,13 @@ const pool = global.__PG_POOL__ ?? (
     connectionString: databaseUrl,
     ssl: shouldUseSsl || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     // Supabase has connection limits, so we adjust based on environment
+    // Increased dev limit to 10 to prevent timeouts with parallel requests
     max: databaseUrl.includes('supabase')
-      ? (process.env.NODE_ENV === 'production' ? 15 : 3)
-      : (process.env.NODE_ENV === 'production' ? 20 : 5),
+      ? (process.env.NODE_ENV === 'production' ? 20 : 15) // Increased from 15/10 to 20/15
+      : (process.env.NODE_ENV === 'production' ? 20 : 15),
     min: 0,
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 20_000, // Increased for remote Supabase connections
+    connectionTimeoutMillis: 30_000, // Increased from 20s to 30s
     maxUses: 7_500,
     keepAlive: true,
     keepAliveInitialDelayMillis: 30_000,

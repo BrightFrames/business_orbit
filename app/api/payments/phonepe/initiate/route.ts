@@ -32,13 +32,32 @@ export async function POST(request: NextRequest) {
             amount,
         });
 
-        return NextResponse.json({
-            base64Body,
-            checksum,
-            apiUrl,
-            transactionId,
+        // Perform server-side call to PhonePe
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-VERIFY': checksum,
+                accept: 'application/json',
+            },
+            body: JSON.stringify({ request: base64Body }),
         });
 
+        const responseData = await response.json();
+
+        if (responseData.success && responseData.data?.instrumentResponse?.redirectInfo?.url) {
+            return NextResponse.json({
+                success: true,
+                redirectUrl: responseData.data.instrumentResponse.redirectInfo.url,
+                transactionId,
+            });
+        } else {
+            console.error('PhonePe API Error:', responseData);
+            return NextResponse.json({
+                error: 'Payment initiation failed',
+                details: responseData.message || responseData
+            }, { status: 502 });
+        }
     } catch (error: any) {
         console.error('Payment initiation error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

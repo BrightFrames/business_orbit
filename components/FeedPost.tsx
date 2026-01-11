@@ -180,12 +180,8 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
         {/* User Info */}
         <div className="flex items-center gap-3">
           <div
-            className="relative cursor-pointer"
-            onClick={() => {
-              toast("This feature is enabled in Phase2/Version2", {
-                duration: 3000,
-              })
-            }}
+            className="relative cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => window.location.href = `/profile/${post.user_id}`}
           >
             <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
               {post.profile_photo_url ? (
@@ -207,11 +203,7 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
 
           <div
             className="flex-1 cursor-pointer"
-            onClick={() => {
-              toast("This feature is enabled in Phase2/Version2", {
-                duration: 3000,
-              })
-            }}
+            onClick={() => window.location.href = `/profile/${post.user_id}`}
           >
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-gray-900">{post.user_name}</h3>
