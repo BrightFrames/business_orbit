@@ -66,6 +66,7 @@ export function BookingModal({ expert, isOpen, onClose, onSuccess }: BookingModa
                     })
 
                     const paymentData = await paymentRes.json()
+                    console.log('Payment Initiation Response:', paymentData)
 
                     if (paymentData.success && paymentData.redirectUrl) {
                         toast.success(`Booking created! Redirecting to payment...`)

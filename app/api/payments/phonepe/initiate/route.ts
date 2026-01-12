@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
                 transactionId,
             });
         } else {
-            console.error('PhonePe API Error:', responseData);
+            console.error('PhonePe API Error Full Response:', JSON.stringify(responseData, null, 2));
             return NextResponse.json({
                 error: 'Payment initiation failed',
                 details: responseData.message || responseData
@@ -60,6 +60,6 @@ export async function POST(request: NextRequest) {
         }
     } catch (error: any) {
         console.error('Payment initiation error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
     }
 }
