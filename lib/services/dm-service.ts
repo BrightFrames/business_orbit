@@ -163,6 +163,31 @@ class DMService {
                 [res.rows[0].created_at, conversationId]
             );
 
+            // Get recipient ID to send notification
+            const convRes = await client.query(
+                'SELECT user1_id, user2_id FROM conversations WHERE id = $1',
+                [conversationId]
+            );
+
+            if (convRes.rows.length > 0) {
+                const { user1_id, user2_id } = convRes.rows[0];
+                const recipientId = user1_id === senderId ? user2_id : user1_id;
+
+                // Check for sender name
+                const senderRes = await client.query('SELECT name FROM users WHERE id = $1', [senderId]);
+                const senderName = senderRes.rows[0]?.name || 'Someone';
+
+                await client.query(
+                    `INSERT INTO notifications (user_id, type, title, message, link)
+                     VALUES ($1, 'message', 'New Message', $2, $3)`,
+                    [
+                        recipientId,
+                        `${senderName} sent you a message`,
+                        `/product/messages?conversationId=${conversationId}`
+                    ]
+                );
+            }
+
             await client.query('COMMIT');
 
             const row = res.rows[0];

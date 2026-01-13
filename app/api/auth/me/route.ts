@@ -4,11 +4,28 @@ import { proxyToBackend } from '@/lib/utils/proxy-api';
 import pool from '@/lib/config/database';
 
 export async function GET(request: NextRequest) {
+  console.log('[API] GET /api/auth/me start');
+
   // In production on Vercel, proxy to backend (Vercel doesn't have database access)
-  if (process.env.VERCEL || !pool) {
+  // Also proxy if no database connection is available locally
+  const shouldProxy = process.env.VERCEL || !pool;
+  console.log(`[API] Auth check: VERCEL=${!!process.env.VERCEL}, Database Pool=${!!pool}, Should Proxy=${shouldProxy}`);
+
+  // Prevent proxy loop in development
+  if (shouldProxy && process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
+    console.error('[API] Critical Error: Database connection missing in development. Cannot proxy to self.');
+    return NextResponse.json(
+      { error: 'Database connection failed in development. Please check if DATABASE_URL is set in .env file.' },
+      { status: 500 }
+    );
+  }
+
+  if (shouldProxy) {
+    console.log('[API] Proxying auth request to backend');
     return proxyToBackend(request, '/api/auth/me');
   }
   try {
+    console.log('[API] Processing auth request locally');
     const user = await getUserFromToken(request);
 
     if (!user) {

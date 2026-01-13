@@ -46,21 +46,24 @@ const isBuildTime =
   // CI environment during build (GitHub Actions sets this)
   (process.env.CI === 'true' && process.env.npm_lifecycle_event === 'build');
 
+const isLocalDb = databaseUrl && (databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1'));
+
 // NEVER create pool during build time - this causes timeouts
 // Create pool only if DATABASE_URL is available AND we're not building
 // During build, pool must be null to prevent any connection attempts
 const pool = global.__PG_POOL__ ?? (
   !isBuildTime && databaseUrl ? new Pool({
     connectionString: databaseUrl,
-    ssl: shouldUseSsl || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    // Only use SSL if explicitly required by URL (cloud providers) or if production AND NOT local
+    ssl: shouldUseSsl || (process.env.NODE_ENV === 'production' && !isLocalDb) ? { rejectUnauthorized: false } : false,
     // Supabase has connection limits, so we adjust based on environment
     // Increased dev limit to 10 to prevent timeouts with parallel requests
     max: databaseUrl.includes('supabase')
       ? (process.env.NODE_ENV === 'production' ? 20 : 15) // Increased from 15/10 to 20/15
       : (process.env.NODE_ENV === 'production' ? 20 : 15),
     min: 0,
-    idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 30_000, // Increased from 20s to 30s
+    idleTimeoutMillis: 60_000,
+    connectionTimeoutMillis: 60_000, // Increased from 30s to 60s
     maxUses: 7_500,
     keepAlive: true,
     keepAliveInitialDelayMillis: 30_000,

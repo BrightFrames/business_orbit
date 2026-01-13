@@ -30,18 +30,18 @@ export async function GET(request: NextRequest) {
         FROM posts p
         JOIN users u ON p.user_id = u.id
         LEFT JOIN (
-          SELECT post_id, COUNT(*) as likes
+          SELECT post_id, COUNT(*)::integer as likes
           FROM post_engagements 
           WHERE engagement_type = 'like'
           GROUP BY post_id
         ) like_count ON p.id = like_count.post_id
         LEFT JOIN (
-          SELECT post_id, COUNT(*) as comments
+          SELECT post_id, COUNT(*)::integer as comments
           FROM post_comments 
           GROUP BY post_id
         ) comment_count ON p.id = comment_count.post_id
         LEFT JOIN (
-          SELECT post_id, COUNT(*) as shares
+          SELECT post_id, COUNT(*)::integer as shares
           FROM post_engagements 
           WHERE engagement_type = 'share'
           GROUP BY post_id
