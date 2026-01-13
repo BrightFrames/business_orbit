@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import pool from '@/lib/config/database';
 import { generateToken, setTokenCookie } from '@/lib/utils/auth';
+import { awardOrbitPoints } from '@/lib/utils/rewards';
 
 export async function POST(request: NextRequest) {
   try {
@@ -84,6 +85,12 @@ export async function POST(request: NextRequest) {
 
     // Set cookie
     setTokenCookie(response, token);
+
+    // Award Daily Login Points
+    // We don't await this to avoid blocking the response
+    awardOrbitPoints(user.id, 'daily_login', 'Daily login reward').catch(err =>
+      console.error('[Login] Failed to award points:', err)
+    );
 
     return response;
 

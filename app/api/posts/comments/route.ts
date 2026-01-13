@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/config/database';
 import { verifyToken } from '@/lib/utils/auth';
+import { awardOrbitPoints } from '@/lib/utils/rewards';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,9 +32,9 @@ export async function GET(request: NextRequest) {
         WHERE c.post_id = $1
         ORDER BY c.created_at ASC
       `;
-      
+
       const commentsResult = await client.query(commentsQuery, [postId]);
-      
+
       return NextResponse.json({
         success: true,
         data: commentsResult.rows
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
         VALUES ($1, $2, $3, $4)
         RETURNING id, content, created_at, parent_comment_id
       `;
-      
+
       const commentResult = await client.query(commentQuery, [
         postId,
         userId,
@@ -110,6 +111,13 @@ export async function POST(request: NextRequest) {
       ]);
 
       const comment = commentResult.rows[0];
+
+      // Award Reply Points if it's a comment/reply
+      // Note: Prompt says "Reply to a post/request", so any comment counts
+      // Fire and forget
+      awardOrbitPoints(userId, 'reply_to_post', 'Replied to a post').catch(err =>
+        console.error('Failed to award reply points:', err)
+      );
 
       // Get user info for response
       const userQuery = `SELECT id, name, profile_photo_url FROM users WHERE id = $1`;

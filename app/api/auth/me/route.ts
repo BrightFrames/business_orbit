@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         createdAt: user.created_at,
         isAdmin: user.is_admin || false,
         location: user.location || 'Not specified',
-        rewardScore: user.reward_score || 85,
+        rewardScore: user.orbit_points || 0,
         mutualConnections: user.mutual_connections || 0,
         isPremium: user.is_premium || false
       }

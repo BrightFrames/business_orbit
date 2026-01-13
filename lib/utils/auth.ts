@@ -37,7 +37,7 @@ export const authenticateToken = async (req: NextRequest) => {
 
     // Get user from database
     const result = await pool.query(
-      'SELECT id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, created_at, is_admin FROM users WHERE id = $1',
+      'SELECT id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, orbit_points, created_at, is_admin FROM users WHERE id = $1',
       [decoded.userId]
     );
 

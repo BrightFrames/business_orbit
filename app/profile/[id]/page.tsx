@@ -362,7 +362,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                   </div>
                   <Badge variant="secondary" className="flex items-center justify-center w-fit mx-auto lg:mx-0">
                     <Award className="w-3 h-3 mr-1" />
-                    Score: 85
+                    Score: {profileData.rewardScore || 0}
                   </Badge>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">12 mutual connections</p>

@@ -15,6 +15,7 @@ export interface UserProfile {
   rewardScore?: number;
   mutualConnections?: number;
   isPremium?: boolean;
+  expertise?: string[];
 }
 
 export interface UserGroup {

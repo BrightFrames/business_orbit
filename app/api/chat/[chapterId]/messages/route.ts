@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/config/database'
 import { getUserFromToken } from '@/lib/utils/auth'
 import { chatService } from '@/lib/services/chat-service'
+import { awardOrbitPoints } from '@/lib/utils/rewards'
 
 export async function GET(
   request: NextRequest,
@@ -33,11 +34,11 @@ export async function GET(
 
     // Get messages from PostgreSQL
     const result = await chatService.getMessages(chapterId, limit, cursor || undefined)
-    
-    return NextResponse.json({ 
-      success: true, 
-      messages: result.messages, 
-      nextCursor: result.nextCursor 
+
+    return NextResponse.json({
+      success: true,
+      messages: result.messages,
+      nextCursor: result.nextCursor
     })
   } catch (error: any) {
     // eslint-disable-next-line no-console
@@ -88,6 +89,10 @@ export async function POST(
       senderAvatarUrl: user.profile_photo_url || null,
       content: content.trim(),
     })
+
+    // Award Chapter Chat Points
+    // Fire and forget
+    awardOrbitPoints(user.id, 'chapter_chat_post', 'Posted in chapter chat').catch(console.error);
 
     return NextResponse.json({ success: true, message })
   } catch (error: any) {

@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
     google_id VARCHAR(255),
     linkedin_id VARCHAR(255),
     is_admin BOOLEAN DEFAULT FALSE,
+    orbit_points INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -392,4 +393,56 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+
+-- Orbit Point System Tables
+
+-- Point Transactions
+CREATE TABLE IF NOT EXISTS point_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    points INTEGER NOT NULL,
+    action_type VARCHAR(50) NOT NULL, -- 'login', 'post', 'reply', 'thank_you_sent', 'thank_you_received', etc.
+    description VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_point_transactions_user_id ON point_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_point_transactions_created_at ON point_transactions(created_at DESC);
+
+-- Thank You Notes
+CREATE TABLE IF NOT EXISTS thank_you_notes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL CHECK (char_length(message) > 0 AND char_length(message) <= 1000),
+    is_public BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_thank_you_notes_sender ON thank_you_notes(sender_id);
+CREATE INDEX IF NOT EXISTS idx_thank_you_notes_receiver ON thank_you_notes(receiver_id);
+
+-- Event Feedback
+CREATE TABLE IF NOT EXISTS event_feedback (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    feedback TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(event_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_feedback_event_id ON event_feedback(event_id);
+
+-- Secret Group Messages (New infrastructure)
+CREATE TABLE IF NOT EXISTS secret_group_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID NOT NULL REFERENCES secret_groups(id) ON DELETE CASCADE,
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL CHECK (char_length(content) > 0 AND char_length(content) <= 4000),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_secret_group_messages_group_id ON secret_group_messages(group_id, created_at DESC);
 

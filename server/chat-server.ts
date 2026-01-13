@@ -6,6 +6,7 @@ import pool from '../lib/config/database'
 import { chatService } from '../lib/services/chat-service'
 import { groupChatService } from '../lib/services/group-chat-service'
 import { dmService } from '../lib/services/dm-service'
+import { awardOrbitPoints } from '../lib/utils/rewards'
 
 
 type ChatMessage = {
@@ -255,6 +256,16 @@ io.on('connection', (socket) => {
 
         const room = `chapter-${chapterId}`
         io.to(room).emit('newMessage', saved)
+
+        // Award points (fire and forget)
+        try {
+          awardOrbitPoints(senderIdNum, 'chapter_chat_post', 'Posted in chapter chat').catch((e: unknown) =>
+            console.error('Failed to award points for chat:', e)
+          )
+        } catch (e) {
+          console.error('Error invoking reward logic:', e)
+        }
+
         ack?.({ ok: true, message: saved })
       } finally {
         client.release()
@@ -290,6 +301,16 @@ io.on('connection', (socket) => {
       const saved = await groupChatService.storeMessage({ groupId: String(groupId), senderId: String(senderId), content: String(content || '').trim() })
       const room = `group-${groupId}`
       io.to(room).emit('group:newMessage', saved)
+
+      // Award group points (fire and forget)
+      try {
+        awardOrbitPoints(Number(senderId), 'secret_group_activity', 'Active in secret group').catch((e: unknown) =>
+          console.error('Failed to award points for group chat:', e)
+        )
+      } catch (e) {
+        console.error('Error invoking group reward logic:', e)
+      }
+
       ack?.({ ok: true })
     } catch (e) {
       console.error('group:send error', e)

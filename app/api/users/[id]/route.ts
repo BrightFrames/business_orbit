@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/config/database';
 import { getUserFromToken } from '@/lib/utils/auth';
+import { awardOrbitPoints } from '@/lib/utils/rewards';
 
 // Note: Avoid in-memory caching on serverless to prevent stale profile images
 export async function GET(
@@ -30,7 +31,7 @@ export async function GET(
     // Get user basic info
     const userResult = await pool.query(
       `SELECT id, name, email, phone, profile_photo_url, profile_photo_id, 
-              banner_url, banner_id, skills, description, profession, interest, created_at
+              banner_url, banner_id, skills, description, profession, interest, orbit_points, created_at
        FROM users WHERE id = $1`,
       [userId]
     );
@@ -71,6 +72,7 @@ export async function GET(
         description: userData.description,
         profession: userData.profession,
         interest: userData.interest,
+        rewardScore: userData.orbit_points || 0,
         createdAt: userData.created_at
       },
       groups: {
@@ -108,15 +110,15 @@ export async function PATCH(
     if (!Number.isFinite(userId) || userId !== Number(authUser.id)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-    
-    const body = await request.json().catch(() => ({})) as { 
+
+    const body = await request.json().catch(() => ({})) as {
       name?: string
       profession?: string
       description?: string
       skills?: string[]
       interest?: string
     }
-    
+
     // Validate name if provided
     const name = typeof body.name === 'string' ? body.name.trim() : undefined
     if (name && (name.length < 2 || name.length > 100)) {
@@ -198,7 +200,7 @@ export async function PATCH(
 
     const result = await pool.query(query, values)
     const row = result.rows[0]
-    
+
     const res = NextResponse.json({
       user: {
         id: row.id,
@@ -217,6 +219,25 @@ export async function PATCH(
     res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
     res.headers.set('Pragma', 'no-cache')
     res.headers.set('Expires', '0')
+    res.headers.set('Expires', '0')
+
+    // Check for Profile Completion Reward (Fire and forget)
+    // 100% Profile = Name, Email, Phone, Photo, Banner, Skills, Description, Profession, Interest
+    const isComplete =
+      row.name &&
+      row.email &&
+      row.phone &&
+      row.profile_photo_url &&
+      row.banner_url &&
+      row.skills && row.skills.length > 0 &&
+      row.description &&
+      row.profession &&
+      row.interest;
+
+    if (isComplete) {
+      awardOrbitPoints(userId, 'complete_profile', 'Profile completed 100%').catch(console.error);
+    }
+
     return res
   } catch (error: any) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

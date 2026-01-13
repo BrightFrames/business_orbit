@@ -330,7 +330,7 @@ export default function ProfilePage() {
                       )}
                       <Badge variant="secondary" className="flex items-center justify-center w-fit mx-auto lg:mx-0">
                         <Award className="w-3 h-3 mr-1" />
-                        Score: {user.rewardScore || 85}
+                        Score: {user.rewardScore || 0}
                       </Badge>
                       <div className="flex items-center justify-center lg:justify-start">
                         <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
