@@ -38,7 +38,7 @@ interface FeedPostProps {
 export default function FeedPost({ post, onEngagementChange, onPostDeleted }: FeedPostProps) {
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
-  const [likes, setLikes] = useState(post.likes);
+  const [likes, setLikes] = useState(Number(post.likes));
   const [comments, setComments] = useState(post.comments);
   const [isEngaging, setIsEngaging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);

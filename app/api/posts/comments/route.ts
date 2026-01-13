@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
         WHERE c.post_id = $1
         ORDER BY c.created_at ASC
       `;
-      
+
       const commentsResult = await client.query(commentsQuery, [postId]);
-      
+
       return NextResponse.json({
         success: true,
         data: commentsResult.rows
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         VALUES ($1, $2, $3, $4)
         RETURNING id, content, created_at, parent_comment_id
       `;
-      
+
       const commentResult = await client.query(commentQuery, [
         postId,
         userId,
@@ -115,6 +115,27 @@ export async function POST(request: NextRequest) {
       const userQuery = `SELECT id, name, profile_photo_url FROM users WHERE id = $1`;
       const userResult = await client.query(userQuery, [userId]);
       const user = userResult.rows[0];
+
+      // Create notification for post owner if it's not their own comment
+      const postQuery = 'SELECT user_id, content FROM posts WHERE id = $1';
+      const postResult = await client.query(postQuery, [postId]);
+
+      if (postResult.rows.length > 0) {
+        const postOwnerId = postResult.rows[0].user_id;
+        const postContentSnippet = postResult.rows[0].content.substring(0, 30) + (postResult.rows[0].content.length > 30 ? '...' : '');
+
+        if (postOwnerId !== userId) {
+          await client.query(
+            `INSERT INTO notifications (user_id, type, title, message, link)
+             VALUES ($1, 'post_comment', 'New Comment', $2, $3)`,
+            [
+              postOwnerId,
+              `${user.name} commented on your post: "${postContentSnippet}"`,
+              `/product/feed` // Ideally link to specific post if supported
+            ]
+          );
+        }
+      }
 
       const responseData = {
         ...comment,

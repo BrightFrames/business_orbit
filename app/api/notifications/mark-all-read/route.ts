@@ -2,12 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/config/database';
 import { getUserFromToken } from '@/lib/utils/auth';
 
-export async function PATCH(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> } // Params must be awaited in newer Next.js versions or treated as promise
-) {
+export async function PATCH(request: NextRequest) {
     try {
-        const { id } = await params; // Await params correctly
         const user = await getUserFromToken(request);
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -16,14 +12,14 @@ export async function PATCH(
         await pool.query(
             `UPDATE notifications 
              SET is_read = TRUE 
-             WHERE id = $1 AND user_id = $2`,
-            [id, user.id]
+             WHERE user_id = $1 AND is_read = FALSE`,
+            [user.id]
         );
 
         return NextResponse.json({ success: true });
 
     } catch (error: any) {
-        console.error('Error marking notification as read:', error);
+        console.error('Error marking all notifications as read:', error);
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
