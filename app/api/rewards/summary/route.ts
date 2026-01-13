@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
 
             // Helper to find stat
             const getStat = (types: string[]) => {
-                const relevant = stats.filter(s => types.includes(s.action_type));
+                const relevant = stats.filter((s: any) => types.includes(s.action_type));
                 return {
-                    points: relevant.reduce((sum, s) => sum + (parseInt(s.total_points) || 0), 0),
-                    count: relevant.reduce((sum, s) => sum + (parseInt(s.count) || 0), 0)
+                    points: relevant.reduce((sum: number, s: any) => sum + (parseInt(s.total_points) || 0), 0),
+                    count: relevant.reduce((sum: number, s: any) => sum + (parseInt(s.count) || 0), 0)
                 };
             };
 
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
                             }
                         }
                     },
-                    recentActivity: activityRes.rows.map(row => ({
+                    recentActivity: activityRes.rows.map((row: any) => ({
                         type: row.action_type,
                         description: row.description || formatActionType(row.action_type),
                         points: row.points,

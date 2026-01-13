@@ -126,22 +126,27 @@ export default function FeedPage() {
       fetchPosts(1, false)
 
       // Set up interval to check for scheduled posts every 10 seconds (more frequent)
+      // Set up interval to check for scheduled posts every 10 minutes (reduced frequency)
       const interval = setInterval(async () => {
         try {
+          // Only check if document is visible to prevent background tab spam
+          if (document.hidden) return;
+
           const response = await fetch('/api/posts/publish-scheduled', { method: 'POST' })
-          const data = await response.json()
-          // Refresh feed if posts were published
-          if (data.success && data.published > 0) {
-            console.log(`Published ${data.published} scheduled post(s), refreshing feed...`)
-            // Small delay to ensure database is fully updated
-            setTimeout(() => {
-              fetchPosts(1, false)
-            }, 300)
+          if (response.ok) {
+            const data = await response.json()
+            // Refresh feed if posts were published
+            if (data.success && data.published > 0) {
+              // console.log(`Published ${data.published} scheduled post(s), refreshing feed...`)
+              setTimeout(() => {
+                fetchPosts(1, false)
+              }, 300)
+            }
           }
         } catch (error) {
-          console.error('Error publishing scheduled posts:', error)
+          // Silent error to prevent console spam
         }
-      }, 300000) // Check every 5 minutes (reduced frequency to prevent DB congestion)
+      }, 600000) // Check every 10 minutes
 
       // Refresh when user returns to the tab/window (in case they were away when post was published)
       const handleVisibilityChange = () => {

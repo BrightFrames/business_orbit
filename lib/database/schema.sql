@@ -446,3 +446,22 @@ CREATE TABLE IF NOT EXISTS secret_group_messages (
 
 CREATE INDEX IF NOT EXISTS idx_secret_group_messages_group_id ON secret_group_messages(group_id, created_at DESC);
 
+
+-- Orbit Point Configuration
+CREATE TABLE IF NOT EXISTS reward_configurations (
+    id SERIAL PRIMARY KEY,
+    action_type VARCHAR(50) UNIQUE NOT NULL,
+    description VARCHAR(255),
+    points INTEGER NOT NULL DEFAULT 0,
+    daily_limit INTEGER, -- NULL means no limit
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Trigger to automatically update updated_at
+DROP TRIGGER IF EXISTS update_reward_connfig_updated_at ON reward_configurations;
+CREATE TRIGGER update_reward_connfig_updated_at 
+    BEFORE UPDATE ON reward_configurations 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
