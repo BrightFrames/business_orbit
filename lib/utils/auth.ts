@@ -21,6 +21,11 @@ export const setTokenCookie = (res: NextResponse, token: string): void => {
   });
 };
 
+// Simple in-memory cache to reduce DB load
+// Map<userId, { user: UserData, timestamp: number }>
+const userCache = new Map<number, { user: any, timestamp: number }>();
+const CACHE_TTL = 60 * 1000; // 1 minute
+
 // Authentication middleware for Next.js API routes
 export const authenticateToken = async (req: NextRequest) => {
   const token = req.cookies.get('token')?.value;
@@ -35,17 +40,44 @@ export const authenticateToken = async (req: NextRequest) => {
     }
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as { userId: number };
 
+    // Check cache first
+    const cached = userCache.get(decoded.userId);
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+      // console.log(`[Auth] Returning cached user for userId: ${decoded.userId}`);
+      return cached.user;
+    }
+
     // Get user from database
-    const result = await pool.query(
+    console.log(`[Auth] Verifying token for userId: ${decoded.userId}`);
+    const start = Date.now();
+
+    // Add 5 second timeout to the query
+    const dbPromise = pool.query(
       'SELECT id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, created_at, is_admin FROM users WHERE id = $1',
       [decoded.userId]
     );
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Database query timed out after 5000ms')), 5000)
+    );
+
+    const result: any = await Promise.race([dbPromise, timeoutPromise]);
+
+    console.log(`[Auth] Database query took ${Date.now() - start}ms`);
 
     if (result.rows.length === 0) {
       throw new Error('User not found');
     }
 
-    return result.rows[0];
+    const user = result.rows[0];
+
+    // Store in cache
+    userCache.set(decoded.userId, {
+      user,
+      timestamp: Date.now()
+    });
+
+    return user;
   } catch (error) {
     throw new Error('Invalid token');
   }

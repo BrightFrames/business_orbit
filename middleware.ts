@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // 1) Auth gate for product pages
-  if (pathname.startsWith('/product')) {
+  // 1) Auth gate for product pages and profile
+  if (pathname.startsWith('/product') || pathname.startsWith('/profile')) {
     const token = request.cookies.get('token')?.value;
     // Public marketing routes under /product (do NOT require auth)
     const publicProductPaths = ['/product', '/product/', '/product/auth'];

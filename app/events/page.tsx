@@ -14,53 +14,17 @@ import { Input } from "@/components/ui/input";
 import toast, { Toaster } from "react-hot-toast";
 
 
-// Sample data for demonstration - will be replaced with API data
-const upcomingEvents = [
-  {
-    id: 1,
-    title: "AI in Product Development Workshop",
-    host: "Sarah Chen",
-    hostAvatar: "SC",
-    date: "Dec 28, 2024",
-    time: "6:00 PM - 8:00 PM",
-    location: "WeWork BKC, Mumbai",
-    attendees: 47,
-    maxAttendees: 60,
-    price: "Free",
-    category: "Workshop",
-    description: "Learn how to integrate AI into your product development process",
-    eventType: "physical",
-    meetingLink: "",
-    isJoined: false,
-  },
-  {
-    id: 2,
-    title: "Startup Pitch Night",
-    host: "Bengaluru Entrepreneurs",
-    hostAvatar: "BE",
-    date: "Jan 5, 2025",
-    time: "7:00 PM - 9:00 PM",
-    location: "91springboard Koramangala",
-    attendees: 89,
-    maxAttendees: 100,
-    price: "₹500",
-    category: "Networking",
-    description: "Present your startup idea to investors and fellow entrepreneurs",
-    eventType: "online",
-    meetingLink: "https://meet.google.com/abc-defg-hij",
-    isJoined: false,
-  },
-];
 
 export default function EventsPage() {
+
   const { user } = useAuth();
+  const [events, setEvents] = useState<any[]>([]);
+  const [hostingEvents, setHostingEvents] = useState<any[]>([]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showRSVPDialog, setShowRSVPDialog] = useState(false);
-  const [events, setEvents] = useState(upcomingEvents);
-  const [hostingEvents, setHostingEvents] = useState<any[]>([]);
-
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [proposalData, setProposalData] = useState({

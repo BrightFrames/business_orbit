@@ -27,59 +27,25 @@ export default function ProfileCard({ className = "" }: ProfileCardProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        if (user) {
-          // Use current user data if available
-          setProfile({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            profile_photo_url: user.profilePhotoUrl,
-            role: user.profession || 'Professional',
-            reward_score: 85, // Default score since it's not in User type
-            created_at: user.createdAt || new Date().toISOString()
-          })
-        } else {
-          // Fetch from API if user data not available
-          const result = await safeApiCall(
-            () => fetch('/api/auth/me', {
-              credentials: 'include',
-              headers: {
-                'Content-Type': 'application/json',
-              }
-            }),
-            'Failed to fetch profile'
-          )
-
-          if (result.success && result.data && typeof result.data === 'object' && result.data !== null) {
-            const data = result.data as any
-            setProfile({
-              id: data.id,
-              name: data.name,
-              email: data.email,
-              profile_photo_url: data.profile_photo_url,
-              role: data.profession || data.role || 'Professional',
-              reward_score: data.reward_score || 85,
-              created_at: data.created_at || new Date().toISOString()
-            })
-          } else {
-            setError('Failed to load profile')
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching profile:', error)
-        setError('Failed to load profile')
-      } finally {
-        setLoading(false)
-      }
+    if (user) {
+      setLoading(false);
+      setProfile({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        profile_photo_url: user.profilePhotoUrl,
+        role: user.profession || 'Professional',
+        reward_score: 85,
+        created_at: user.createdAt || new Date().toISOString()
+      });
+    } else {
+      // If no user and not loading (handled by parent/context usually), we can't show profile
+      // But we shouldn't fetch /api/auth/me again as AuthContext already did.
+      setLoading(false);
+      // Don't set error here immediately as it might flicker during initial load if context is slow?
+      // Actually useAuth loading is separate.
     }
-
-    fetchProfile()
-  }, [user])
+  }, [user]);
 
   if (loading) {
     return (

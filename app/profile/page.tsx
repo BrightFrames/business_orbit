@@ -18,56 +18,14 @@ import RequestsCard from "@/components/RequestsCard"
 import EditProfileForm from "@/components/EditProfileForm"
 import toast from 'react-hot-toast';
 
-// Default activity data
-const defaultActivityPosts = [
-  {
-    author: {
-      name: "You",
-      role: "Professional",
-      avatar: "U",
-      rewardScore: 85,
-    },
-    content: "Just launched our new AI-powered analytics dashboard! The response from beta users has been incredible. Looking for feedback from fellow product managers - what metrics do you prioritize when measuring user engagement?",
-    timestamp: "2h ago",
-    engagement: {
-      likes: 24,
-      comments: 8,
-      shares: 3,
-    },
-    isLiked: false,
-  },
-  {
-    author: {
-      name: "You",
-      role: "Professional",
-      avatar: "U",
-      rewardScore: 85,
-    },
-    content: "Reflecting on the importance of user empathy in product development. Sometimes the best insights come from simply listening to your users' frustrations and pain points.",
-    timestamp: "1d ago",
-    engagement: {
-      likes: 18,
-      comments: 5,
-      shares: 2,
-    },
-    isLiked: true,
-  },
-]
-
-// Default groups data
-const defaultGroups: UserGroup[] = [
-  { name: "Product Leaders SF", type: "chapter", members: 245 },
-  { name: "AI/ML Enthusiasts", type: "secret", members: 89 },
-  { name: "Startup Founders Network", type: "secret", members: 156 },
-  { name: "Women in Tech", type: "chapter", members: 1200 },
-]
+// Removed defaultActivityPosts and defaultGroups to use real DB data only
 
 export default function ProfilePage() {
   const { user, loading, logout, updateUser } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("about")
   const [isEditing, setIsEditing] = useState(false)
-  const [userGroups, setUserGroups] = useState<UserGroup[]>(defaultGroups)
+  const [userGroups, setUserGroups] = useState<UserGroup[]>([])
   // Removed static posts list; activity will show dynamic stats only
   const [expanded, setExpanded] = useState<null | 'chapters' | 'groups' | 'connections' | 'events'>(null)
   const [chapters, setChapters] = useState<any[]>([])
@@ -211,16 +169,7 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Please log in to view your profile</h1>
-          <Button onClick={() => window.location.href = '/product/auth'} className="cursor-pointer">
-            Go to Login
-          </Button>
-        </div>
-      </div>
-    )
+    return <RedirectToLogin />
   }
 
   const handleEditToggle = () => {
@@ -687,5 +636,20 @@ function SimpleList({ items, emptyText }: { items: { id: string | number, title:
         <li key={it.id} className="text-sm">{it.title}</li>
       ))}
     </ul>
+  )
+}
+
+function RedirectToLogin() {
+  useEffect(() => {
+    window.location.href = '/product/auth'
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <p>Redirecting to login...</p>
+      </div>
+    </div>
   )
 }

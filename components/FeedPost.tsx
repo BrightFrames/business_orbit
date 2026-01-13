@@ -70,7 +70,7 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
       if (result.success) {
         if (type === 'like') {
           setIsLiked(!isLiked);
-          setLikes(prev => isLiked ? prev - 1 : prev + 1);
+          setLikes(prev => isLiked ? Number(prev) - 1 : Number(prev) + 1);
         }
 
         if (onEngagementChange) {

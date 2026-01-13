@@ -38,8 +38,11 @@ interface Post {
   }>;
 }
 
+import { useMediaQuery } from "@/hooks/use-media-query"
+
 export default function FeedPage() {
   const { user, loading, onboardingCompleted, inviteSent, isNewUser, isAdmin } = useAuth()
+  const isDesktop = useMediaQuery("(min-width: 1024px)")
   const [posts, setPosts] = useState<Post[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [page, setPage] = useState(1)
@@ -237,20 +240,35 @@ export default function FeedPage() {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 md:py-8 pb-16 sm:pb-20 lg:pb-8">
         <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-8">
           {/* Left Sidebar - Mobile: Show at top, Desktop: Show on left */}
-          <div className="lg:hidden w-full space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <ProfileCard />
-              <ChaptersCard />
+          {/* Only render on mobile if !isDesktop, but we need to handle hydration carefully. 
+              The hook handles hydration by returning false initially. 
+              So initially (SSR) isDesktop is false. 
+              If we conditional render based on !isDesktop, mobile shows. 
+              If based on isDesktop, desktop shows.
+              To match current behavior:
+              Mobile sidebar is hidden on lg.
+              Desktop sidebar is visible on lg.
+          */}
+
+          {/* Mobile Sidebar */}
+          {!isDesktop && (
+            <div className="lg:hidden w-full space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <ProfileCard />
+                <ChaptersCard />
+              </div>
+              <SecretGroupsCard />
             </div>
-            <SecretGroupsCard />
-          </div>
+          )}
 
           {/* Left Sidebar - Desktop */}
-          <div className="hidden lg:block w-64 space-y-4">
-            <ProfileCard />
-            <ChaptersCard />
-            <SecretGroupsCard />
-          </div>
+          {isDesktop && (
+            <div className="hidden lg:block w-64 space-y-4">
+              <ProfileCard />
+              <ChaptersCard />
+              <SecretGroupsCard />
+            </div>
+          )}
 
           {/* Main Content */}
           <div className="flex-1 lg:max-w-2xl space-y-3 sm:space-y-4 lg:space-y-6">
@@ -301,21 +319,25 @@ export default function FeedPage() {
             )}
           </div>
 
-          {/* Right Sidebar - Mobile: Show at bottom, Desktop: Show on right */}
-          <div className="lg:hidden w-full space-y-3 sm:space-y-4 mt-4 sm:mt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <RequestsCard variant="compact" />
-              <SuggestedConnectionsCard />
+          {/* Right Sidebar - Mobile */}
+          {!isDesktop && (
+            <div className="lg:hidden w-full space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <RequestsCard variant="compact" />
+                <SuggestedConnectionsCard />
+              </div>
+              <UpcomingEventsCard />
             </div>
-            <UpcomingEventsCard />
-          </div>
+          )}
 
           {/* Right Sidebar - Desktop */}
-          <div className="hidden lg:block w-64 space-y-4">
-            <RequestsCard variant="compact" />
-            <SuggestedConnectionsCard />
-            <UpcomingEventsCard />
-          </div>
+          {isDesktop && (
+            <div className="hidden lg:block w-64 space-y-4">
+              <RequestsCard variant="compact" />
+              <SuggestedConnectionsCard />
+              <UpcomingEventsCard />
+            </div>
+          )}
         </div>
       </div>
     </div>
