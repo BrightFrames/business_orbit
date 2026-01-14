@@ -91,8 +91,10 @@ export async function POST(
     })
 
     // Award Chapter Chat Points
-    // Fire and forget
-    awardOrbitPoints(user.id, 'chapter_chat_post', 'Posted in chapter chat').catch(console.error);
+    // Requirement: Message length >= 10
+    if (content.length >= 10) {
+      awardOrbitPoints(user.id, 'chapter_chat_post', 'Posted in chapter chat').catch(console.error);
+    }
 
     return NextResponse.json({ success: true, message })
   } catch (error: any) {

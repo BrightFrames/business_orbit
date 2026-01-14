@@ -112,24 +112,25 @@ export async function POST(request: NextRequest) {
 
       const comment = commentResult.rows[0];
 
-      // Award Reply Points if it's a comment/reply
-      // Note: Prompt says "Reply to a post/request", so any comment counts
-      // Fire and forget
-      awardOrbitPoints(userId, 'reply_to_post', 'Replied to a post').catch(err =>
-        console.error('Failed to award reply points:', err)
-      );
-
       // Get user info for response
       const userQuery = `SELECT id, name, profile_photo_url FROM users WHERE id = $1`;
       const userResult = await client.query(userQuery, [userId]);
       const user = userResult.rows[0];
 
-      // Create notification for post owner if it's not their own comment
+      // Fetch Post Info
       const postQuery = 'SELECT user_id, content FROM posts WHERE id = $1';
       const postResult = await client.query(postQuery, [postId]);
 
       if (postResult.rows.length > 0) {
         const postOwnerId = postResult.rows[0].user_id;
+
+        // Award Reply Points if it's not their own post
+        if (postOwnerId !== userId) {
+          awardOrbitPoints(userId, 'reply_to_post', 'Replied to a post').catch(err =>
+            console.error('Failed to award reply points:', err)
+          );
+        }
+
         const postContentSnippet = postResult.rows[0].content.substring(0, 30) + (postResult.rows[0].content.length > 30 ? '...' : '');
 
         if (postOwnerId !== userId) {

@@ -17,7 +17,7 @@ export function Navigation() {
 
   const tabs = [
     { name: "Feed", href: "/product/feed", icon: Home },
-    { name: "Navigator", href: "/product/navigator", icon: Compass, isPhase2: true },
+    { name: "Navigator", href: "/product/navigator", icon: Compass },
     { name: "Chapters", href: "/product/chapters", icon: Users },
     { name: "Groups", href: "/product/groups", icon: Users },
     { name: "Consultation", href: "/product/consultations", icon: Briefcase },
@@ -46,15 +46,6 @@ export function Navigation() {
                 <Link
                   key={tab.name}
                   href={tab.href}
-                  onClick={(e) => {
-                    if (tab.isPhase2) {
-                      e.preventDefault()
-                      toast("This feature is enabled in Phase2/Version2", {
-                        icon: "🧭",
-                        duration: 3000,
-                      })
-                    }
-                  }}
                   className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer ${pathname === tab.href
                     ? "bg-background text-foreground shadow-soft"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
@@ -121,15 +112,6 @@ export function Navigation() {
               <Link
                 key={tab.name}
                 href={tab.href}
-                onClick={(e) => {
-                  if (tab.isPhase2) {
-                    e.preventDefault()
-                    toast("This feature is enabled in Phase2/Version2", {
-                      icon: "🧭",
-                      duration: 3000,
-                    })
-                  }
-                }}
                 className={`flex flex-col items-center justify-center space-y-1 transition-all duration-200 cursor-pointer ${isActive
                   ? "text-foreground bg-accent/20"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/10"

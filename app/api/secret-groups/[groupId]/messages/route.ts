@@ -54,7 +54,26 @@ export async function POST(
       const message = res.rows[0];
 
       // Award Points: "Active in a Secret Group Chat" 15 pts (per day limit handled in awards.ts)
-      const reward = await awardOrbitPoints(user.id, 'secret_group_activity', 'Secret group chat activity');
+      // Requirement: >= 2 meaningful messages (or 1 validated)
+      // We check if they have at least 2 messages today (including this one)
+      const countRes = await client.query(
+        `SELECT COUNT(*) as count FROM secret_group_messages 
+         WHERE group_id = $1 AND sender_id = $2 
+         AND created_at > CURRENT_DATE`,
+        [groupId, user.id]
+      );
+      const msgCount = parseInt(countRes.rows[0]?.count || '0');
+
+      let reward = { awarded: false, points: 0, newTotal: 0 };
+
+      if (msgCount >= 2) {
+        // Daily limit in awardOrbitPoints will ensure they only get it once per day
+        reward = await awardOrbitPoints(user.id, 'secret_group_activity', 'Secret group chat activity');
+        // We only return the points info if it was actually awarded? 
+        // Or we just return the result of the attempt.
+      } else {
+        // Not enough messages yet
+      }
 
       await client.query('COMMIT');
 

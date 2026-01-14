@@ -11,7 +11,6 @@ type PageMapKey =
   | "subscription"
   | "connections"
   | "connection"
-  | "navigator"
   | "chapters"
   | "groups"
   | "events"
@@ -27,7 +26,6 @@ const pageLoaders: Record<PageMapKey, () => Promise<{ default: React.ComponentTy
   subscription: () => import("../../subscription/page"),
   connections: () => import("../../connections/page"),
   connection: () => import("../../connections/page"),
-  navigator: () => import("../../navigator/page"),
   chapters: () => import("../../chapters/page"),
   groups: () => import("../../groups/page"),
   events: () => import("../../events/page"),

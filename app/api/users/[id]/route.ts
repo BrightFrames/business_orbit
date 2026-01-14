@@ -235,7 +235,11 @@ export async function PATCH(
       row.interest;
 
     if (isComplete) {
-      awardOrbitPoints(userId, 'complete_profile', 'Profile completed 100%').catch(console.error);
+      // Check if already awarded
+      const prev = await pool.query('SELECT 1 FROM point_transactions WHERE user_id = $1 AND action_type = $2 LIMIT 1', [userId, 'complete_profile']);
+      if (prev.rowCount === 0) {
+        awardOrbitPoints(userId, 'complete_profile', 'Profile completed 100%').catch(console.error);
+      }
     }
 
     return res

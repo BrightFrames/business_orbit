@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/config/database';
 import { getUserFromToken } from '@/lib/utils/auth';
-import { awardOrbitPoints } from '@/lib/utils/rewards';
+import { awardOrbitPoints, checkPairwiseLimit, validateCredibility } from '@/lib/utils/rewards';
 
 export async function POST(request: NextRequest) {
     try {
@@ -26,11 +26,29 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // 1. Validate Credibility (Anti-Abuse)
+        const isCredible = await validateCredibility(user.id);
+        if (!isCredible) {
+            return NextResponse.json(
+                { error: 'You need more reputation (50+ points) to send Thank You notes.' },
+                { status: 403 }
+            );
+        }
+
+        // 2. Pairwise Limit Check
+        const hasSentRecently = await checkPairwiseLimit(user.id, receiverId, 7);
+        if (hasSentRecently) {
+            return NextResponse.json(
+                { error: 'You can only send one Thank You note to the same person every 7 days.' },
+                { status: 429 }
+            );
+        }
+
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
 
-            // Create Thank You Note
+            // 3. Create Thank You Note
             const insertQuery = `
         INSERT INTO thank_you_notes (sender_id, receiver_id, message, is_public)
         VALUES ($1, $2, $3, $4)
@@ -45,12 +63,24 @@ export async function POST(request: NextRequest) {
 
             const note = res.rows[0];
 
-            // Award Points
+            // 4. Award Points (Transactional)
             // Sender: 20 pts
-            await awardOrbitPoints(user.id, 'send_thank_you', `Sent thank you note to user ${receiverId}`);
+            await awardOrbitPoints(
+                user.id,
+                'send_thank_you',
+                `Sent thank you note to user ${receiverId}`,
+                note.id,
+                client
+            );
 
             // Receiver: 50 pts
-            await awardOrbitPoints(receiverId, 'receive_thank_you', `Received thank you note from user ${user.id}`);
+            await awardOrbitPoints(
+                receiverId,
+                'receive_thank_you',
+                `Received thank you note from user ${user.id}`,
+                note.id,
+                client
+            );
 
             await client.query('COMMIT');
 

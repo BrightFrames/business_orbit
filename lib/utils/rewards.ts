@@ -8,12 +8,14 @@ export type PointAction =
     | 'secret_group_activity'
     | 'send_thank_you'
     | 'receive_thank_you'
-    | 'event_feedback';
+    | 'event_feedback'
+    | 'consultation_complete';
 
 interface RewardConfig {
     points: number;
     daily_limit: number | null;
     is_active: boolean;
+    category: 'activity' | 'contribution' | 'outcome';
 }
 
 // Simple in-memory cache for reward configurations
@@ -29,7 +31,7 @@ async function getRewardConfig(action: PointAction): Promise<RewardConfig | null
 
     try {
         const res = await pool.query(
-            'SELECT points, daily_limit, is_active FROM reward_configurations WHERE action_type = $1',
+            'SELECT points, daily_limit, is_active, category FROM reward_configurations WHERE action_type = $1',
             [action]
         );
 
@@ -38,7 +40,8 @@ async function getRewardConfig(action: PointAction): Promise<RewardConfig | null
         const config = {
             points: res.rows[0].points,
             daily_limit: res.rows[0].daily_limit,
-            is_active: res.rows[0].is_active
+            is_active: res.rows[0].is_active,
+            category: res.rows[0].category
         };
 
         configCache.set(action, {
@@ -60,7 +63,9 @@ async function getRewardConfig(action: PointAction): Promise<RewardConfig | null
 export async function awardOrbitPoints(
     userId: number,
     action: PointAction,
-    description: string = ''
+    description: string = '',
+    sourceId: string | null = null,
+    client: any = null
 ): Promise<{ awarded: boolean; points: number; newTotal: number }> {
     try {
         const config = await getRewardConfig(action);
@@ -77,25 +82,30 @@ export async function awardOrbitPoints(
         // Check daily limits if applicable
         if (config.daily_limit !== null) {
             if (await isDailyLimitReached(userId, action, config.daily_limit)) {
-                console.log(`[Rewards] Daily limit reached for user ${userId} on action ${action}`);
+                // console.log(`[Rewards] Daily limit reached for user ${userId} on action ${action}`);
                 const currentPoints = await getUserPoints(userId);
                 return { awarded: false, points: 0, newTotal: currentPoints };
             }
         }
 
-        const client = await pool.connect();
+        // Use provided client or create a new one
+        const dbClient = client || await pool.connect();
+        const shouldRelease = !client; // Only release if we created it
+
         try {
-            await client.query('BEGIN');
+            if (shouldRelease) {
+                await dbClient.query('BEGIN');
+            }
 
             // Record transaction
-            await client.query(
-                `INSERT INTO point_transactions (user_id, points, action_type, description) 
-                 VALUES ($1, $2, $3, $4)`,
-                [userId, points, action, description]
+            await dbClient.query(
+                `INSERT INTO point_transactions (user_id, points, action_type, description, source_id, category) 
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [userId, points, action, description, sourceId, config.category]
             );
 
             // Update user points
-            const res = await client.query(
+            const res = await dbClient.query(
                 `UPDATE users 
                  SET orbit_points = COALESCE(orbit_points, 0) + $1 
                  WHERE id = $2 
@@ -103,17 +113,24 @@ export async function awardOrbitPoints(
                 [points, userId]
             );
 
-            await client.query('COMMIT');
+            if (shouldRelease) {
+                await dbClient.query('COMMIT');
+            }
 
             const newTotal = res.rows[0]?.orbit_points || 0;
-            console.log(`[Rewards] Awarded ${points} points to user ${userId} for ${action}. New total: ${newTotal}`);
+            // console.log(`[Rewards] Awarded ${points} points to user ${userId} for ${action}. New total: ${newTotal}`);
             return { awarded: true, points, newTotal };
 
         } catch (e) {
-            await client.query('ROLLBACK');
+            if (shouldRelease) {
+                await dbClient.query('ROLLBACK');
+            }
             throw e;
         } finally {
-            client.release();
+            if (shouldRelease) {
+                // @ts-ignore
+                dbClient.release();
+            }
         }
     } catch (error) {
         console.error('[Rewards] Failed to award points:', error);
@@ -184,4 +201,22 @@ export async function checkAndAwardProfileCompletion(userId: number): Promise<vo
     } catch (error) {
         console.error('[Rewards] Failed to check profile completion:', error);
     }
+}
+
+export async function checkPairwiseLimit(senderId: number, receiverId: number, days: number = 7): Promise<boolean> {
+    // Check if a thank you note was sent in the last N days
+    const noteRes = await pool.query(
+        `SELECT COUNT(*) as count FROM thank_you_notes
+         WHERE sender_id = $1 AND receiver_id = $2
+         AND created_at > NOW() - INTERVAL '${days} days'`,
+        [senderId, receiverId]
+    );
+
+    return parseInt(noteRes.rows[0]?.count || '0') > 0;
+}
+
+export async function validateCredibility(userId: number): Promise<boolean> {
+    // Arbitrary threshold: points > 50 OR account age > 7 days (not implementing age check yet for simplicity)
+    const points = await getUserPoints(userId);
+    return points >= 50;
 }

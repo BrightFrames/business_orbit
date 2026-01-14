@@ -2,68 +2,109 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Search, Send, Bot, User, MessageSquare, AlertCircle } from "lucide-react"
-import { NavigatorService } from "@/lib/services/navigator-service"
+import { Search, Send, Bot, User, MessageSquare, AlertCircle, CheckCircle2, TrendingUp, Clock, Zap } from "lucide-react"
 import toast from "react-hot-toast"
 
-interface Professional {
-  id: string
-  name: string
-  role: string
-  avatar: string
-  rewardScore: number
-  expertise: string[]
-  matchScore: number
-  location: string
-  experience: string
-  content: string
+// Types matching API response
+interface NavigatorResult {
+  user_id: number;
+  name: string;
+  role: string;
+  avatar_url?: string | null;
+  reward_tier: string;
+  performance_signals: {
+    score: number;
+    activity_level: string;
+    response_rate: string;
+    top_skills: string[];
+  };
+  availability: boolean;
+  response_likelihood: 'Low' | 'Medium' | 'High';
+  match_reason: string;
 }
 
-export default function ProductNavigatorPage() {
+interface SearchResponse {
+  search_summary: {
+    interpreted_role: string;
+    context: string;
+    confidence_level: 'Low' | 'Medium' | 'High';
+  };
+  results: NavigatorResult[];
+  quick_message_preview?: string;
+  error?: string;
+}
+
+export default function NavigatorPage() {
   const [query, setQuery] = useState("")
   const [messages, setMessages] = useState<Array<{ type: "user" | "ai"; content: string }>>([])
   const [showResults, setShowResults] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [professionals, setProfessionals] = useState<Professional[]>([])
+  const [results, setResults] = useState<NavigatorResult[]>([])
+  const [searchSummary, setSearchSummary] = useState<SearchResponse['search_summary'] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null)
+  const [messagePreview, setMessagePreview] = useState<string>("")
+  const [selectedUser, setSelectedUser] = useState<NavigatorResult | null>(null)
 
   const handleSearch = async () => {
     if (!query.trim()) return
 
     setIsLoading(true)
     setError(null)
+    setShowResults(false)
     setMessages((prev) => [...prev, { type: "user", content: query }])
 
     try {
-      // Call Navigator AI API using the NavigatorService
-      const response = await NavigatorService.searchProfessionals(query, 10)
-      
-      // Transform professionals for UI
-      const formattedProfessionals = NavigatorService.transformProfessionals(response)
-      
-      setProfessionals(formattedProfessionals)
+      const res = await fetch('/api/navigator/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          search_intent: query,
+          custom_message_template: "Hi {{name}}, I saw your impressive work in {{role}} and wanted to discuss a potential opportunity."
+        })
+      });
+
+      const data: SearchResponse = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to perform search');
+      }
+
+      setResults(data.results);
+      setSearchSummary(data.search_summary);
+      if (data.quick_message_preview) {
+        setMessagePreview(data.quick_message_preview);
+      }
+
+      // Construct AI response based on results
+      let aiResponse = "";
+      if (data.results.length === 0) {
+        aiResponse = `I understood you're looking for a ${data.search_summary.interpreted_role}, but I couldn't find any high-confidence matches in our network right now.`;
+      } else {
+        aiResponse = `I found ${data.results.length} high-performing professionals matching your criteria for "${data.search_summary.interpreted_role}". These candidates are ranked by verifiable performance data.`;
+      }
+
       setMessages((prev) => [
         ...prev,
         {
           type: "ai",
-          content: NavigatorService.getSummary(response),
+          content: aiResponse,
         },
       ])
       setShowResults(true)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Navigator AI Error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch professional recommendations')
+      setError(err.message || 'Failed to fetch professional recommendations')
       setMessages((prev) => [
         ...prev,
         {
           type: "ai",
-          content: "I apologize, but I'm having trouble connecting to the professional database right now. Please try again in a moment.",
+          content: "I apologize, but I'm having trouble connecting to the Navigator engine right now. Please try again.",
         },
       ])
     } finally {
@@ -78,279 +119,232 @@ export default function ProductNavigatorPage() {
     }
   }
 
+  const handleSendReachout = (user: NavigatorResult) => {
+    // Simulate sending message
+    toast.success(`Message sent to ${user.name}!`);
+    setSelectedUser(null);
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Navigator AI</h1>
-          <p className="text-muted-foreground text-sm sm:text-base px-4 sm:px-0">
-            Describe your problem or need, and we'll connect you with the right professionals
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center space-x-2 mb-2">
+            <CompassIcon className="w-8 h-8 text-primary" />
+            <h1 className="text-3xl font-bold">Navigator AI</h1>
+          </div>
+          <p className="text-muted-foreground max-w-xl mx-auto">
+            Discover high-performing professionals ranked by verifiable activity and outcomes, not just keywords.
           </p>
         </div>
 
         {/* Search Input */}
-        <Card className="p-4 sm:p-6 mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+        <Card className="p-6 mb-8 border-primary/20 shadow-md">
+          <div className="flex items-center space-x-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
-                placeholder="Describe your problem or need... (e.g., 'Need help with React performance optimization')"
+                placeholder="Describe who you need... (e.g., 'Find a reliable React developer for a freelance project')"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyPress={handleKeyPress}
-                className="pl-9 sm:pl-10 py-2 sm:py-3 text-sm sm:text-base"
+                className="pl-10 py-6 text-lg"
               />
             </div>
-            <Button onClick={handleSearch} disabled={!query.trim() || isLoading} className="w-full sm:w-auto text-sm sm:text-base">
-              <Send className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              {isLoading ? "Searching..." : "Find Experts"}
+            <Button onClick={handleSearch} disabled={!query.trim() || isLoading} size="lg" className="px-8">
+              <Zap className="w-4 h-4 mr-2" />
+              {isLoading ? "Analyzing..." : "Find Experts"}
             </Button>
           </div>
         </Card>
 
-        {/* Error Message */}
-        {error && (
-          <Card className="p-3 sm:p-4 mb-6 sm:mb-8 border-red-200 bg-red-50">
-            <div className="flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
-              <p className="text-red-800 text-sm sm:text-base">{error}</p>
-            </div>
-          </Card>
-        )}
-
-        {/* Chat Messages */}
-        {messages.length > 0 && (
-          <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
-            {messages.map((message, index) => (
-              <div key={index} className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}>
+        {/* Chat Interface */}
+        <div className="space-y-6 mb-8">
+          {messages.map((message, index) => (
+            <div key={index} className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`flex items-start space-x-3 max-w-3xl ${message.type === "user" ? "flex-row-reverse space-x-reverse" : ""}`}
+              >
                 <div
-                  className={`flex items-start space-x-2 sm:space-x-3 max-w-[90%] sm:max-w-3xl ${message.type === "user" ? "flex-row-reverse space-x-reverse" : ""}`}
-                >
-                  <div
-                    className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.type === "user" ? "bg-foreground text-background" : "bg-muted"
+                  className={`w-8 h-8 rounded-full flex items-center justify-center border ${message.type === "user" ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border"
                     }`}
-                  >
-                    {message.type === "user" ? <User className="w-3 h-3 sm:w-4 sm:h-4" /> : <Bot className="w-3 h-3 sm:w-4 sm:h-4" />}
-                  </div>
-                  <Card className={`p-3 sm:p-4 ${message.type === "user" ? "bg-foreground text-background" : "bg-card"}`}>
-                    <p className="text-xs sm:text-sm">{message.content}</p>
-                  </Card>
+                >
+                  {message.type === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                 </div>
+                <Card className={`p-4 ${message.type === "user" ? "bg-primary text-primary-foreground" : "bg-card border shadow-sm"}`}>
+                  <p className="text-sm leading-relaxed">{message.content}</p>
+                </Card>
               </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="flex items-start space-x-2 sm:space-x-3 max-w-[90%] sm:max-w-3xl">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </div>
-                  <Card className="p-3 sm:p-4">
-                    <div className="flex items-center space-x-1 sm:space-x-2">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                      <div
-                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-muted-foreground rounded-full animate-bounce"
-                        style={{ animationDelay: "0.1s" }}
-                      ></div>
-                      <div
-                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-muted-foreground rounded-full animate-bounce"
-                        style={{ animationDelay: "0.2s" }}
-                      ></div>
-                    </div>
-                  </Card>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          ))}
 
-        {/* Professional Results */}
-        {showResults && (
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
-              <h2 className="text-lg sm:text-xl font-semibold">Recommended Professionals</h2>
-              <Badge variant="secondary" className="text-xs sm:text-sm w-fit">Ranked by relevance</Badge>
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center border border-border">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div className="flex space-x-1 items-center h-8">
+                  <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce delay-75"></div>
+                  <div className="w-2 h-2 bg-primary/40 rounded-full animate-bounce delay-150"></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Results Area */}
+        {showResults && results.length > 0 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold flex items-center">
+                <CheckCircle2 className="w-5 h-5 mr-2 text-green-500" />
+                Top Candidates
+              </h2>
+              {searchSummary && (
+                <Badge variant="outline" className="px-3 py-1">
+                  Intent: {searchSummary.interpreted_role} ({searchSummary.context})
+                </Badge>
+              )}
             </div>
 
-            <div className="space-y-3 sm:space-y-4">
-              {professionals.map((professional, index) => (
-                <Card key={professional.id} className="p-4 sm:p-6 hover:shadow-sm transition-shadow">
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    <div className="flex items-start space-x-3 sm:space-x-4 min-w-0 flex-1">
-                      <div className="relative flex-shrink-0">
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-muted rounded-full flex items-center justify-center text-sm sm:text-lg font-semibold">
-                          {professional.avatar}
+            <div className="grid gap-4 md:grid-cols-1">
+              {results.map((profile, index) => (
+                <Card key={profile.user_id} className="p-0 overflow-hidden hover:shadow-md transition-all border-l-4 border-l-primary/60">
+                  <div className="p-6 flex flex-col sm:flex-row items-start gap-4">
+
+                    {/* Avatar / Rank */}
+                    <div className="relative">
+                      {profile.avatar_url ? (
+                        <img src={profile.avatar_url} alt={profile.name} className="w-16 h-16 rounded-full object-cover border border-border" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-xl font-bold text-gray-600">
+                          {profile.name.charAt(0)}
                         </div>
-                        <Badge className="absolute -top-1 -right-1 bg-foreground text-background text-xs px-1">
-                          #{index + 1}
+                      )}
+                      <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow-sm">
+                        #{index + 1}
+                      </div>
+                    </div>
+
+                    {/* Main Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-lg font-bold truncate">{profile.name}</h3>
+                        <Badge variant="secondary" className={`ml-2 ${getTierColor(profile.reward_tier)}`}>
+                          {profile.reward_tier}
                         </Badge>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
-                          <h3 className="font-semibold text-base sm:text-lg truncate">{professional.name}</h3>
-                          <div className="flex flex-wrap gap-1 sm:gap-2">
-                            <Badge variant="secondary" className="text-xs">
-                              Score: {professional.rewardScore}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              Match: {professional.matchScore}%
-                            </Badge>
-                          </div>
+                      <p className="text-muted-foreground text-sm mb-3">{profile.role}</p>
+
+                      {/* Performance Signals */}
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                        <div className="flex items-center" title="Weighted Performance Score">
+                          <TrendingUp className="w-4 h-4 mr-1 text-blue-500" />
+                          <span className="font-semibold text-foreground">{profile.performance_signals.score}</span>
+                          <span className="ml-1 text-xs text-muted-foreground">Orbit Score</span>
                         </div>
-                        <p className="text-muted-foreground text-sm sm:text-base mb-1 sm:mb-2 truncate">{professional.role}</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3 truncate">{professional.location}</p>
-                        <div className="flex flex-wrap gap-1 sm:gap-2">
-                          {professional.expertise.map((skill) => (
-                            <Badge key={skill} variant="outline" className="text-xs">
-                              {skill}
-                            </Badge>
-                          ))}
+                        <div className="flex items-center" title="Recent Activity Level">
+                          <Zap className="w-4 h-4 mr-1 text-yellow-500" />
+                          <span>{profile.performance_signals.activity_level} Activity</span>
+                        </div>
+                        <div className="flex items-center" title="Response Likelihood">
+                          <Clock className="w-4 h-4 mr-1 text-green-500" />
+                          <span>{profile.response_likelihood} Response Rate</span>
                         </div>
                       </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {profile.performance_signals.top_skills.map(skill => (
+                          <Badge key={skill} variant="outline" className="text-xs bg-slate-50">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row lg:flex-col space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-0 lg:space-y-2 flex-shrink-0">
-                      <Button 
-                        size="sm" 
-                        className="text-xs sm:text-sm"
-                        onClick={() => {
-                          toast("This feature is enabled in Phase2/Version2", {
-                            duration: 3000,
-                          })
-                        }}
-                      >
-                        Connect
+
+                    {/* Actions */}
+                    <div className="flex flex-col gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+                      <Button onClick={() => setSelectedUser(profile)} className="w-full sm:w-auto shadow-sm">
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Draft Outreach
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => {
-                          toast("This feature is enabled in Phase2/Version2", {
-                            duration: 3000,
-                          })
-                        }}
-                        className="text-xs sm:text-sm"
-                      >
+                      <Button variant="ghost" size="sm" className="w-full sm:w-auto">
                         View Profile
                       </Button>
                     </div>
+                  </div>
+                  <div className="bg-muted/30 px-6 py-2 border-t text-xs text-muted-foreground flex items-center">
+                    <CheckCircle2 className="w-3 h-3 mr-1 text-primary/70" />
+                    Match Reason: {profile.match_reason}
                   </div>
                 </Card>
               ))}
             </div>
           </div>
         )}
-
-        {/* Floating CTA */}
-        {showResults && (
-          <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40">
-            <Button 
-              size="sm" 
-              className="shadow-lg text-xs sm:text-sm"
-              onClick={() => {
-                toast("This feature is enabled in Phase2/Version2", {
-                  duration: 3000,
-                })
-              }}
-            >
-              <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Draft Outreach Message with AI</span>
-              <span className="sm:hidden">Draft Message</span>
-            </Button>
-          </div>
-        )}
-
-        {/* Professional Details Modal */}
-        {selectedProfessional && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
-            <Card className="max-w-2xl w-full max-h-[90vh] sm:max-h-[80vh] overflow-y-auto">
-              <div className="p-4 sm:p-6">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h2 className="text-xl sm:text-2xl font-bold">Professional Profile</h2>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setSelectedProfessional(null)}
-                    className="text-xs sm:text-sm"
-                  >
-                    Close
-                  </Button>
-                </div>
-                
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="flex items-start space-x-3 sm:space-x-4">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-muted rounded-full flex items-center justify-center text-sm sm:text-lg font-semibold flex-shrink-0">
-                      {selectedProfessional.avatar}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg sm:text-xl font-semibold truncate">{selectedProfessional.name}</h3>
-                      <p className="text-muted-foreground text-sm sm:text-base truncate">{selectedProfessional.role}</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{selectedProfessional.location}</p>
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <Badge variant="secondary" className="text-xs">Score: {selectedProfessional.rewardScore}</Badge>
-                        <Badge variant="outline" className="text-xs">Match: {selectedProfessional.matchScore}%</Badge>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm sm:text-base">Expertise</h4>
-                    <div className="flex flex-wrap gap-1 sm:gap-2">
-                      {selectedProfessional.expertise.map((skill) => (
-                        <Badge key={skill} variant="outline" className="text-xs">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm sm:text-base">Experience</h4>
-                    <div className="bg-muted p-3 sm:p-4 rounded-lg">
-                      <p className="text-xs sm:text-sm whitespace-pre-wrap">{selectedProfessional.experience}</p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-semibold mb-2 text-sm sm:text-base">Full Profile</h4>
-                    <div className="bg-muted p-3 sm:p-4 rounded-lg">
-                      <p className="text-xs sm:text-sm whitespace-pre-wrap">{selectedProfessional.content}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 pt-3 sm:pt-4">
-                    <Button 
-                      className="flex-1 text-xs sm:text-sm"
-                      onClick={() => {
-                        toast("This feature is enabled in Phase2/Version2", {
-                          duration: 3000,
-                        })
-                      }}
-                    >
-                      Connect
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="flex-1 text-xs sm:text-sm"
-                      onClick={() => {
-                        toast("This feature is enabled in Phase2/Version2", {
-                          duration: 3000,
-                        })
-                      }}
-                    >
-                      <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      Send Message
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
       </div>
+
+      {/* Outreach Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-lg shadow-xl border-primary/20">
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4">Draft Outreach to {selectedUser.name}</h3>
+              <div className="bg-blue-50 border border-blue-100 p-3 rounded-md mb-4 text-sm text-blue-800">
+                <p className="font-semibold flex items-center gap-2">
+                  <Bot className="w-4 h-4" />
+                  Navigator Insight
+                </p>
+                This user has a {selectedUser.response_likelihood} likelihood of responding. Keep your message concise and outcome-focused.
+              </div>
+
+              <label className="text-sm font-medium mb-1 block">Message Preview</label>
+              <textarea
+                className="w-full min-h-[120px] p-3 rounded-md border text-sm focus:ring-2 focus:ring-primary/50 outline-none"
+                defaultValue={messagePreview.replace('{{name}}', selectedUser.name.split(' ')[0]).replace('{{role}}', selectedUser.role)}
+              ></textarea>
+
+              <div className="flex gap-3 mt-6 justify-end">
+                <Button variant="outline" onClick={() => setSelectedUser(null)}>Cancel</Button>
+                <Button onClick={() => handleSendReachout(selectedUser)}>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Message
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
 
+function CompassIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </svg>
+  )
+}
+
+function getTierColor(tier: string) {
+  switch (tier) {
+    case 'Orbit Elite': return 'bg-purple-100 text-purple-800 border-purple-200';
+    case 'Luminary': return 'bg-amber-100 text-amber-800 border-amber-200';
+    case 'Rising Star': return 'bg-blue-100 text-blue-800 border-blue-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+}
