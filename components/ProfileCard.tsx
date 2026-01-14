@@ -35,7 +35,7 @@ export default function ProfileCard({ className = "" }: ProfileCardProps) {
         email: user.email,
         profile_photo_url: user.profilePhotoUrl,
         role: user.profession || 'Professional',
-        reward_score: 85,
+        reward_score: user.rewardScore || 0,
         created_at: user.createdAt || new Date().toISOString()
       });
     } else {

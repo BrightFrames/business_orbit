@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Find user by email
     const result = await pool.query(
-      'SELECT id, name, email, phone, password_hash, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, created_at FROM users WHERE email = $1',
+      'SELECT id, name, email, phone, password_hash, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, orbit_points, created_at FROM users WHERE email = $1',
       [email]
     );
 
@@ -59,6 +59,17 @@ export async function POST(request: NextRequest) {
     // Generate JWT token
     const token = generateToken(user.id);
 
+    // Award Daily Login Points
+    // We await this to ensure we return the updated score
+    let currentScore = user.orbit_points || 0;
+    try {
+      const awardResult = await awardOrbitPoints(user.id, 'daily_login', 'Daily login reward');
+      currentScore = awardResult.newTotal;
+    } catch (err) {
+      console.error('[Login] Failed to award points:', err);
+      // Fallback to existing points if awarding fails
+    }
+
     // Create response
     const response = NextResponse.json({
       message: 'Login successful',
@@ -77,7 +88,7 @@ export async function POST(request: NextRequest) {
         interest: user.interest,
         createdAt: user.created_at,
         location: user.location || 'Not specified',
-        rewardScore: user.reward_score || 85,
+        rewardScore: currentScore,
         mutualConnections: user.mutual_connections || 0,
         isPremium: user.is_premium || false
       }
@@ -85,12 +96,6 @@ export async function POST(request: NextRequest) {
 
     // Set cookie
     setTokenCookie(response, token);
-
-    // Award Daily Login Points
-    // We don't await this to avoid blocking the response
-    awardOrbitPoints(user.id, 'daily_login', 'Daily login reward').catch(err =>
-      console.error('[Login] Failed to award points:', err)
-    );
 
     return response;
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/utils/auth';
 import { proxyToBackend } from '@/lib/utils/proxy-api';
 import pool from '@/lib/config/database';
+import { awardOrbitPoints, checkAndAwardProfileCompletion } from '@/lib/utils/rewards';
 
 export async function GET(request: NextRequest) {
   console.log('[API] GET /api/auth/me start');
@@ -33,6 +34,18 @@ export async function GET(request: NextRequest) {
         { error: 'Access token required or invalid. Please log in again.' },
         { status: 401 }
       );
+    }
+
+    // Award Daily Login (Visit) Points & Check Profile Completion
+    // We await these so the user sees their updated score immediately
+    try {
+      await checkAndAwardProfileCompletion(user.id);
+      const awardResult = await awardOrbitPoints(user.id, 'daily_login', 'Daily login reward');
+      // Update user object with the latest total points
+      user.orbit_points = awardResult.newTotal;
+    } catch (err) {
+      console.error('[Auth] Failed to award points:', err);
+      // Continue without failing the request
     }
 
     return NextResponse.json({

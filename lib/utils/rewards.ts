@@ -140,3 +140,48 @@ async function getUserPoints(userId: number): Promise<number> {
     const res = await pool.query('SELECT orbit_points FROM users WHERE id = $1', [userId]);
     return res.rows[0]?.orbit_points || 0;
 }
+
+/**
+ * Checks if the user profile is complete and awards points if not already awarded.
+ * Criteria: Profile photo, description, profession, and at least one skill.
+ */
+export async function checkAndAwardProfileCompletion(userId: number): Promise<void> {
+    try {
+        // 1. Check if already awarded (indefinitely - no time limit check, just existence of transaction)
+        const checkRes = await pool.query(
+            'SELECT 1 FROM point_transactions WHERE user_id = $1 AND action_type = $2 LIMIT 1',
+            [userId, 'complete_profile']
+        );
+
+        if (checkRes.rows.length > 0) {
+            return; // Already awarded
+        }
+
+        // 2. Fetch user profile fields
+        const userRes = await pool.query(
+            'SELECT profile_photo_url, profession, skills, description FROM users WHERE id = $1',
+            [userId]
+        );
+
+        if (userRes.rows.length === 0) return;
+
+        const user = userRes.rows[0];
+
+        // 3. Validate completion
+        // Note: location is not in schema, so we skip it.
+        const hasPhoto = !!user.profile_photo_url && user.profile_photo_url.length > 0;
+        const hasBio = !!user.description && user.description.length > 0;
+        const hasProfession = !!user.profession && user.profession.length > 0;
+        const hasSkills = user.skills && Array.isArray(user.skills) && user.skills.length > 0;
+
+        const isComplete = hasPhoto && hasBio && hasProfession && hasSkills;
+
+        if (isComplete) {
+            console.log(`[Rewards] User ${userId} has a complete profile. Awarding points.`);
+            await awardOrbitPoints(userId, 'complete_profile', 'Profile completion bonus');
+        }
+
+    } catch (error) {
+        console.error('[Rewards] Failed to check profile completion:', error);
+    }
+}

@@ -1,4 +1,5 @@
 import pool from '@/lib/config/database';
+import { awardOrbitPoints } from '@/lib/utils/rewards';
 
 export interface GroupChatMessage {
   id: string;
@@ -42,6 +43,14 @@ class GroupChatService {
 
     const meta = await pool.query('SELECT name, profile_photo_url FROM users WHERE id = $1', [message.senderId])
     const row = result.rows[0]
+
+    // Award points
+    try {
+      await awardOrbitPoints(Number(message.senderId), 'secret_group_activity', 'Active in Secret Group');
+    } catch (err) {
+      console.error('Failed to award points for secret group message:', err);
+    }
+
     return {
       id: String(row.id),
       groupId: String(message.groupId),

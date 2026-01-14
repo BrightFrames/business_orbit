@@ -1,4 +1,5 @@
 import pool from '@/lib/config/database';
+import { awardOrbitPoints } from '@/lib/utils/rewards';
 
 export interface ChatMessage {
   id: string;
@@ -36,6 +37,13 @@ class ChatService {
         timestamp: new Date(row.created_at).toISOString(),
       };
 
+      // Award points
+      try {
+        await awardOrbitPoints(parseInt(message.senderId), 'chapter_chat_post', 'Posted in chapter chat');
+      } catch (err) {
+        console.error('Failed to award points for chat message:', err);
+      }
+
       return fullMessage;
     } catch (error) {
       console.error('Error storing message:', error);
@@ -47,8 +55,8 @@ class ChatService {
    * Get messages for a chapter with pagination
    */
   async getMessages(
-    chapterId: string, 
-    limit: number = 50, 
+    chapterId: string,
+    limit: number = 50,
     cursor?: string
   ): Promise<ChatPaginationResult> {
     try {
@@ -65,19 +73,19 @@ class ChatService {
         JOIN users u ON cm.sender_id = u.id
         WHERE cm.chapter_id = $1
       `;
-      
+
       const params: any[] = [chapterId];
-      
+
       if (cursor) {
         queryText += ` AND cm.created_at < $2`;
         params.push(cursor);
       }
-      
+
       queryText += ` ORDER BY cm.created_at DESC LIMIT $${params.length + 1}`;
       params.push(limit + 1); // Get one extra to check if there are more
-      
+
       const result = await pool.query(queryText, params);
-      
+
       const messages = result.rows.map((row: any) => ({
         id: row.id.toString(),
         chapterId: row.chapterId.toString(),
@@ -87,16 +95,16 @@ class ChatService {
         content: row.content,
         timestamp: new Date(row.timestamp).toISOString(),
       }));
-      
+
       const hasMore = messages.length > limit;
       if (hasMore) {
         messages.pop(); // Remove the extra message
       }
-      
-      const nextCursor = hasMore && messages.length > 0 
-        ? messages[messages.length - 1].timestamp 
+
+      const nextCursor = hasMore && messages.length > 0
+        ? messages[messages.length - 1].timestamp
         : null;
-      
+
       return {
         messages: messages.reverse(), // Reverse to get chronological order
         nextCursor,
@@ -129,7 +137,7 @@ class ChatService {
         LIMIT $2`,
         [chapterId, limit]
       );
-      
+
       return result.rows.map((row: any) => ({
         id: row.id.toString(),
         chapterId: row.chapterId.toString(),
@@ -154,7 +162,7 @@ class ChatService {
         'SELECT COUNT(*) as count FROM chapter_messages WHERE chapter_id = $1',
         [chapterId]
       );
-      
+
       return parseInt(result.rows[0].count, 10);
     } catch (error) {
       console.error('Error getting message count:', error);
@@ -171,7 +179,7 @@ class ChatService {
         'SELECT MAX(created_at) as last_activity FROM chapter_messages WHERE chapter_id = $1',
         [chapterId]
       );
-      
+
       const lastActivity = result.rows[0].last_activity;
       return lastActivity ? new Date(lastActivity).toISOString() : null;
     } catch (error) {

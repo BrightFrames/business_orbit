@@ -8,8 +8,10 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import toast from "react-hot-toast"
 import { NotificationsPopover } from "@/components/NotificationsPopover"
+import { useAuth } from "@/contexts/AuthContext"
 
 export function Navigation() {
+  const { user } = useAuth()
   const pathname = usePathname()
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -85,7 +87,7 @@ export function Navigation() {
                 <div className="w-7 h-7 rounded-full border-2 border-foreground flex items-center justify-center transition-all group-hover:scale-105">
                   <div className="w-3 h-3 bg-foreground rounded-full"></div>
                 </div>
-                <span className="ml-2 text-sm font-semibold">85</span>
+                <span className="ml-2 text-sm font-semibold">{user?.rewardScore || 0}</span>
               </Button>
 
               <NotificationsPopover />
