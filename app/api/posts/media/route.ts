@@ -63,33 +63,19 @@ export async function POST(request: NextRequest) {
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        // Upload to Cloudinary (same pattern as profile upload)
-        const { cloudinary } = await import('@/lib/config/cloudinary-client');
-        const uploadResult = await new Promise<any>((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            {
-              folder: 'business-orbit/feed',
-              resource_type: 'auto',
-              transformation: [
-                { width: 1200, height: 1200, crop: 'limit' },
-                { quality: 'auto' }
-              ]
-            },
-            (error: any, result: any) => {
-              if (error) {
-                console.error('Cloudinary upload error:', error);
-                reject(error);
-              } else {
-                resolve(result);
-              }
-            }
-          );
-          uploadStream.end(buffer);
-        });
+        // Convert to base64 data URI
+        const base64Data = `data:${file.type};base64,${buffer.toString('base64')}`;
 
-        if (!uploadResult || !uploadResult.secure_url) {
-          throw new Error('Cloudinary upload failed: No URL returned');
-        }
+        const { cloudinary } = await import('@/lib/config/cloudinary-client');
+
+        const uploadResult = await cloudinary.uploader.upload(base64Data, {
+          folder: 'business-orbit/feed',
+          resource_type: 'auto',
+          transformation: [
+            { width: 1200, height: 1200, crop: 'limit' },
+            { quality: 'auto' }
+          ]
+        });
 
         uploadedMedia.push({
           media_type: uploadResult.resource_type === 'video' ? 'video' : 'image',
