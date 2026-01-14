@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/utils/auth';
-import { cloudinary } from '@/lib/config/cloudinary';
+// import { cloudinary } from '@/lib/config/cloudinary';
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,8 +62,9 @@ export async function POST(request: NextRequest) {
         // Convert File to Buffer for Cloudinary (same as profile upload)
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        
+
         // Upload to Cloudinary (same pattern as profile upload)
+        const { cloudinary } = await import('@/lib/config/cloudinary-client');
         const uploadResult = await new Promise<any>((resolve, reject) => {
           const uploadStream = cloudinary.uploader.upload_stream(
             {
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
                 { quality: 'auto' }
               ]
             },
-            (error, result) => {
+            (error: any, result: any) => {
               if (error) {
                 console.error('Cloudinary upload error:', error);
                 reject(error);
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
           );
           uploadStream.end(buffer);
         });
-        
+
         if (!uploadResult || !uploadResult.secure_url) {
           throw new Error('Cloudinary upload failed: No URL returned');
         }
@@ -101,9 +102,9 @@ export async function POST(request: NextRequest) {
       } catch (uploadError: any) {
         console.error('Error uploading file to Cloudinary:', uploadError);
         return NextResponse.json(
-          { 
-            success: false, 
-            error: `Failed to upload ${file.name}: ${uploadError.message || 'Unknown error'}` 
+          {
+            success: false,
+            error: `Failed to upload ${file.name}: ${uploadError.message || 'Unknown error'}`
           },
           { status: 500 }
         );
@@ -117,9 +118,9 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error uploading media:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Failed to upload media' 
+      {
+        success: false,
+        error: error.message || 'Failed to upload media'
       },
       { status: 500 }
     );

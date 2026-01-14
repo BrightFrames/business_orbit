@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DisplayPostCard } from "@/components/PostCard"
+import FeedPost from "@/components/FeedPost"
 import { MapPin, MessageCircle, UserPlus, Calendar, Star, Award, Users, Lock, DollarSign, Clock, Edit } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Upload } from "lucide-react"
@@ -33,51 +34,20 @@ const profileData = {
   mutualConnections: 12,
 }
 
-const userPosts = [
-  {
-    author: {
-      name: "Sarah Chen",
-      role: "Senior Product Manager",
-      avatar: "SC",
-      rewardScore: 85,
-    },
-    content:
-      "Just launched our new AI-powered analytics dashboard! The response from beta users has been incredible. Looking for feedback from fellow product managers - what metrics do you prioritize when measuring user engagement?",
-    timestamp: "2h ago",
-    engagement: {
-      likes: 24,
-      comments: 8,
-      shares: 3,
-    },
-    isLiked: false,
-  },
-  {
-    author: {
-      name: "Sarah Chen",
-      role: "Senior Product Manager",
-      avatar: "SC",
-      rewardScore: 85,
-    },
-    content:
-      "Reflecting on the importance of user empathy in product development. Sometimes the best insights come from simply listening to your users' frustrations and pain points.",
-    timestamp: "1d ago",
-    engagement: {
-      likes: 18,
-      comments: 5,
-      shares: 2,
-    },
-    isLiked: true,
-  },
-]
+// Removed static userPosts
+
 
 export default function ProfilePage({ params }: { params: { id: string } }) {
   const { user: currentUser, loading } = useAuth()
   const [activeTab, setActiveTab] = useState("about")
+  const [loadingProfile, setLoadingProfile] = useState(true)
   const [connectionStatus, setConnectionStatus] = useState<'not-following' | 'pending' | 'following'>('not-following')
   const [connectionLoading, setConnectionLoading] = useState(false)
   const [profileData, setProfileData] = useState<UserProfile | null>(null)
   const [userGroups, setUserGroups] = useState<UserGroup[]>([])
-  const [loadingProfile, setLoadingProfile] = useState(true)
+
+  const [userPosts, setUserPosts] = useState<any[]>([])
+  const [loadingPosts, setLoadingPosts] = useState(false)
   const [uploading, setUploading] = useState<{ profile: boolean; banner: boolean }>({ profile: false, banner: false })
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
 
@@ -146,6 +116,30 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
 
     fetchConnectionStatus()
   }, [currentUser, loading, params.id])
+
+  // Fetch user posts
+  useEffect(() => {
+    const fetchUserPosts = async () => {
+      if (!params.id) return
+      setLoadingPosts(true)
+      try {
+        const res = await safeApiCall(
+          () => fetch(`/api/posts?userId=${params.id}&limit=20`, { credentials: 'include' }),
+          'Failed to fetch posts'
+        )
+        const postsPayload: any = (res as any).data
+        const items = postsPayload?.data
+        if ((res as any).success && Array.isArray(items)) {
+          setUserPosts(items)
+        } else {
+          setUserPosts([])
+        }
+      } finally {
+        setLoadingPosts(false)
+      }
+    }
+    fetchUserPosts()
+  }, [params.id])
 
   const handleConnect = async () => {
     setConnectionLoading(true)
@@ -507,9 +501,30 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                 <h3 className="font-semibold text-sm sm:text-base">Recent Activity</h3>
                 <Badge variant="outline" className="text-xs">{userPosts.length} posts</Badge>
               </div>
-              {userPosts.map((post, index) => (
-                <DisplayPostCard key={index} {...post} />
-              ))}
+              {loadingPosts ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                  <p className="text-sm text-muted-foreground">Loading posts...</p>
+                </div>
+              ) : userPosts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No posts yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {userPosts.map((post) => (
+                    <FeedPost
+                      key={post.id}
+                      post={{
+                        ...post,
+                        likes: Number(post.likes),
+                        comments: Number(post.comments),
+                        shares: Number(post.shares)
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="groups" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">

@@ -16,6 +16,7 @@ import ImageManager from "@/components/ImageManager"
 import MembersCard from "@/components/MembersCard"
 import RequestsCard from "@/components/RequestsCard"
 import EditProfileForm from "@/components/EditProfileForm"
+import FeedPost from "@/components/FeedPost"
 import toast from 'react-hot-toast';
 
 // Removed defaultActivityPosts and defaultGroups to use real DB data only
@@ -437,23 +438,18 @@ export default function ProfilePage() {
                       {userPosts.length === 0 ? (
                         <div className="text-sm text-muted-foreground">You haven't posted yet.</div>
                       ) : (
-                        <div className="space-y-3">
-                          {userPosts.map((p: any, idx: number) => (
-                            <div key={p.id || idx} className="border rounded-lg p-3 sm:p-4 bg-background">
-                              <div className="text-xs text-muted-foreground mb-1">
-                                {p.created_at ? new Date(p.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Recently'}
-                              </div>
-                              <div className="text-sm sm:text-base whitespace-pre-wrap break-words">
-                                {p.content || p.text || ''}
-                              </div>
-                              {Array.isArray(p.media) && p.media.length > 0 && (
-                                <div className="mt-2 space-y-2">
-                                  {p.media.map((m: any) => (
-                                    <img key={m.id} src={m.cloudinary_url} alt="" className="max-h-64 rounded" />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                        <div className="space-y-4">
+                          {userPosts.map((p: any) => (
+                            <FeedPost
+                              key={p.id}
+                              post={{
+                                ...p,
+                                // Enforce string types for FeedPost compatibility if needed
+                                likes: Number(p.likes),
+                                comments: Number(p.comments),
+                                shares: Number(p.shares)
+                              }}
+                            />
                           ))}
                         </div>
                       )}
