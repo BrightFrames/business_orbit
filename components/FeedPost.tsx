@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Heart, MessageCircle, Sparkles, MoreVertical, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Sparkles, MoreVertical, Trash2, Edit2, X, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { safeApiCall } from "@/lib/utils/api";
 import CommentsSection from "./CommentsSection";
@@ -45,6 +45,12 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showCommentsSection, setShowCommentsSection] = useState(false);
+
+  // Edit State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content);
+  const [isSaving, setIsSaving] = useState(false);
+
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleEngagement = async (type: 'like') => {
@@ -131,6 +137,44 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
       // Error handling
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(false);
+    setEditContent(post.content);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditContent(post.content);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editContent.trim()) return;
+
+    setIsSaving(true);
+    try {
+      const result = await safeApiCall(
+        () => fetch('/api/posts', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId: post.id, content: editContent })
+        }),
+        'Failed to update post'
+      );
+
+      if (result.success) {
+        post.content = editContent; // Optimistic update (or refetch if parent provided handler)
+        setIsEditing(false);
+        toast.success("Post updated!");
+      }
+    } catch (error) {
+      // Error handled by safeApiCall
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -230,6 +274,13 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
               {showMenu && (
                 <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
                   <button
+                    onClick={handleEditClick}
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                    Edit
+                  </button>
+                  <button
                     onClick={handleDeleteClick}
                     className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                   >
@@ -244,7 +295,25 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
 
         {/* Post Content */}
         <div className="text-gray-800 leading-relaxed">
-          {post.content}
+          {isEditing ? (
+            <div className="space-y-3">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full min-h-[100px] p-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={handleCancelEdit} disabled={isSaving}>
+                  <X className="w-4 h-4 mr-1" /> Cancel
+                </Button>
+                <Button size="sm" onClick={handleSaveEdit} disabled={isSaving || !editContent.trim()}>
+                  {isSaving ? "Saving..." : <><Check className="w-4 h-4 mr-1" /> Save</>}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            post.content
+          )}
         </div>
 
         {/* Media */}

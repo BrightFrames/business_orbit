@@ -5,7 +5,7 @@ import { ExpertCard } from '@/components/consultations/ExpertCard'
 import { BookingModal } from '@/components/consultations/BookingModal'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Calendar as CalendarIcon } from 'lucide-react'
+import { Search, Calendar as CalendarIcon, Settings } from 'lucide-react'
 import Link from 'next/link'
 
 export default function ConsultationsPage() {
@@ -47,6 +47,12 @@ export default function ConsultationsPage() {
                     <p className="text-muted-foreground">Book 1-on-1 consultations with industry leaders</p>
                 </div>
                 <div className="flex gap-2">
+                    <Link href="/product/consultations/settings">
+                        <Button variant="outline" className="gap-2">
+                            <Settings size={16} />
+                            Manage Profile
+                        </Button>
+                    </Link>
                     <Link href="/product/consultations/calendar">
                         <Button variant="outline" className="gap-2">
                             <CalendarIcon size={16} />

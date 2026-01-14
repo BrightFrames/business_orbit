@@ -42,6 +42,11 @@ interface AuthContextType {
   isNewUser: boolean;
   setIsNewUser: (isNew: boolean) => void;
   isAdmin: boolean;
+  notifications: any[];
+  unreadCount: number;
+  fetchNotifications: () => Promise<void>;
+  setNotifications: React.Dispatch<React.SetStateAction<any[]>>;
+  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,6 +65,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
   const [inviteSent, setInviteSent] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Helper function to clear token cookie
   const clearTokenCookie = () => {
@@ -74,83 +81,71 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return document.cookie.split(';').some(cookie => cookie.trim().startsWith('token='));
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (e) {
+      console.error("Failed to poll notifications", e);
+    }
+  };
+
   useEffect(() => {
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/auth/me', {
+      const response = await fetch('/api/bootstrap', {
         credentials: 'include',
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-        setIsNewUser(false); // Existing user checking auth
+        const result = await response.json();
+        const { data } = result;
 
-        // Check onboarding status - only if user exists
-        try {
-          const prefsResponse = await fetch(`/api/preferences/${data.user.id}`, {
-            credentials: 'include',
-          });
-          if (prefsResponse.ok) {
-            const prefsData = await prefsResponse.json();
-            setOnboardingCompleted(prefsData.onboardingCompleted);
-          } else {
-            setOnboardingCompleted(false);
-          }
-        } catch (prefsError) {
-          setOnboardingCompleted(false);
-        }
+        if (data && data.user) {
+          setUser(data.user);
+          setIsNewUser(false);
+          setOnboardingCompleted(data.preferences?.onboardingCompleted || false);
+          setInviteSent(data.features?.inviteSent || false);
 
-        // Check if user has sent any invites
-        try {
-          const invitesResponse = await fetch('/api/invites/has-sent', {
-            credentials: 'include',
-          });
-          if (invitesResponse.ok) {
-            const invitesData = await invitesResponse.json();
-            setInviteSent(invitesData.hasSentInvites);
-          } else {
-            setInviteSent(false);
+          if (data.notifications) {
+            setNotifications(data.notifications.items || []);
+            setUnreadCount(data.notifications.unreadCount || 0);
           }
-        } catch (invitesError) {
-          setInviteSent(false);
         }
       } else {
-        // User is not authenticated - clear user state and handle redirects
-        setUser(null);
-        setOnboardingCompleted(false);
-        setInviteSent(false);
-
-        // Clear any invalid token from cookies
-        clearTokenCookie();
-
-        if (typeof window !== 'undefined') {
-          const path = window.location.pathname || '';
-          const publicProductPaths = ['/product', '/product/', '/product/auth'];
-          const isProduct = path.startsWith('/product');
-          const isPublic = publicProductPaths.some(p => path.startsWith(p));
-
-          // If on product pages and not public, redirect to auth
-          if (isProduct && !isPublic) {
-            window.location.href = '/product/auth';
-          }
-          // If on home page and not authenticated, stay on landing page
-          // (don't redirect to auth from home page)
-        }
+        // Fallback or Handle 401
+        handleUnauthenticated();
       }
     } catch (error) {
-      // On error, clear user state and clear cookies
-      setUser(null);
-      setOnboardingCompleted(false);
-      setInviteSent(false);
-
-      // Clear the token cookie on error
-      clearTokenCookie();
+      handleUnauthenticated();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUnauthenticated = () => {
+    setUser(null);
+    setOnboardingCompleted(false);
+    setInviteSent(false);
+    setNotifications([]);
+    setUnreadCount(0);
+    clearTokenCookie();
+
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname || '';
+      const publicProductPaths = ['/product', '/product/', '/product/auth'];
+      const isProduct = path.startsWith('/product');
+      const isPublic = publicProductPaths.some(p => path.startsWith(p));
+      if (isProduct && !isPublic) {
+        window.location.href = '/product/auth';
+      }
     }
   };
 
@@ -297,6 +292,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     isNewUser,
     setIsNewUser,
     isAdmin,
+    notifications,
+    unreadCount,
+    fetchNotifications,
+    setNotifications,
+    setUnreadCount
   };
 
   return (

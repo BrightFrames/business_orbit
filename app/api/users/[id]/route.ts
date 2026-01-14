@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/config/database';
-import { getUserFromToken } from '@/lib/utils/auth';
+import { getUserFromToken, invalidateUserCache } from '@/lib/utils/auth';
 import { awardOrbitPoints } from '@/lib/utils/rewards';
 
 // Note: Avoid in-memory caching on serverless to prevent stale profile images
@@ -220,6 +220,9 @@ export async function PATCH(
     res.headers.set('Pragma', 'no-cache')
     res.headers.set('Expires', '0')
     res.headers.set('Expires', '0')
+
+    // Invalidate auth cache so next request gets fresh data
+    invalidateUserCache(userId);
 
     // Check for Profile Completion Reward (Fire and forget)
     // 100% Profile = Name, Email, Phone, Photo, Banner, Skills, Description, Profession, Interest

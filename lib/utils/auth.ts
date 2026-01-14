@@ -24,7 +24,12 @@ export const setTokenCookie = (res: NextResponse, token: string): void => {
 // Simple in-memory cache to reduce DB load
 // Map<userId, { user: UserData, timestamp: number }>
 const userCache = new Map<number, { user: any, timestamp: number }>();
-const CACHE_TTL = 60 * 1000; // 1 minute
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export const invalidateUserCache = (userId: number) => {
+  userCache.delete(userId);
+  // console.log(`[Auth] Invalidated cache for userId: ${userId}`);
+};
 
 // Authentication middleware for Next.js API routes
 export const authenticateToken = async (req: NextRequest) => {
@@ -53,7 +58,7 @@ export const authenticateToken = async (req: NextRequest) => {
 
     // Add 5 second timeout to the query
     const dbPromise = pool.query(
-      'SELECT id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, orbit_points, created_at, is_admin FROM users WHERE id = $1',
+      'SELECT id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, orbit_points, last_active_at, created_at, is_admin FROM users WHERE id = $1',
       [decoded.userId]
     );
 

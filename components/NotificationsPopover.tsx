@@ -1,12 +1,11 @@
 "use client"
-
 import { useState, useEffect, useRef } from "react"
 import { Bell, UserPlus, Heart, MessageSquare, Users, Info, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
-import { safeApiCall } from "@/lib/utils/api"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface Notification {
     id: number
@@ -19,30 +18,13 @@ interface Notification {
 }
 
 export function NotificationsPopover() {
-    const [notifications, setNotifications] = useState<Notification[]>([])
-    const [unreadCount, setUnreadCount] = useState(0)
-    const [loading, setLoading] = useState(false)
+    const { notifications, unreadCount, fetchNotifications, setNotifications, setUnreadCount } = useAuth()
     const [open, setOpen] = useState(false)
     const popoverRef = useRef<HTMLDivElement>(null)
     const router = useRouter()
 
-    const fetchNotifications = async () => {
-        // Silent fetch
-        const result = await safeApiCall(
-            () => fetch('/api/notifications', { credentials: 'include' }),
-            'Failed to fetch notifications'
-        )
-
-        if (result.success && result.data) {
-            const data = result.data as any
-            setNotifications(data.notifications || [])
-            setUnreadCount(data.unreadCount || 0)
-        }
-    }
-
-    // Poll for notifications every 60 seconds
+    // Poll for notifications every 60 seconds using Context to sync state
     useEffect(() => {
-        fetchNotifications()
         const interval = setInterval(fetchNotifications, 60000)
 
         // Click outside handler

@@ -5,14 +5,58 @@ import { verifyToken } from '@/lib/utils/auth';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
+    const cursor = searchParams.get('cursor'); // timestamp string
     const limit = parseInt(searchParams.get('limit') || '10');
-    const offset = (page - 1) * limit;
     const userIdParam = searchParams.get('userId');
+
+    // Verify Auth for Feed Filtering
+    const token = request.cookies.get('token')?.value;
+    let currentUserId: number | null = null;
+
+    if (token) {
+      const decoded = verifyToken(token);
+      if (typeof decoded === 'number') {
+        currentUserId = decoded;
+      }
+    }
 
     const client = await pool.connect();
     try {
-      // Get posts with user info and engagement counts
+      // Build WHERE clause
+      const conditions = ["p.status = 'published'"];
+      const values: any[] = [];
+      let paramCount = 1;
+
+      if (userIdParam) {
+        // Profile Feed: Show specific user's posts
+        conditions.push(`p.user_id = $${paramCount}`);
+        values.push(parseInt(userIdParam));
+        paramCount++;
+      } else {
+        // Main Feed: Show My Posts + Following
+        if (!currentUserId) {
+          return NextResponse.json(
+            { success: false, error: 'Authentication required for feed' },
+            { status: 401 }
+          );
+        }
+
+        conditions.push(`(p.user_id = $${paramCount} OR p.user_id IN (SELECT following_id FROM user_follows WHERE follower_id = $${paramCount}))`);
+        values.push(currentUserId);
+        paramCount++;
+      }
+
+      if (cursor) {
+        conditions.push(`p.published_at < $${paramCount}`);
+        values.push(cursor);
+        paramCount++;
+      }
+
+      // Add limit to values
+      values.push(limit);
+      const limitParamIndex = paramCount;
+
+      // Primary Feed Query (Optimization: No JOINs for heavy data, correlated subqueries for counts)
       const postsQuery = `
         SELECT 
           p.id,
@@ -24,39 +68,20 @@ export async function GET(request: NextRequest) {
           u.name as user_name,
           u.profile_photo_url,
           u.profession,
-          COALESCE(like_count.likes, 0) as likes,
-          COALESCE(comment_count.comments, 0) as comments,
-          COALESCE(share_count.shares, 0) as shares
+          (SELECT COUNT(*)::integer FROM post_engagements WHERE post_id = p.id AND engagement_type = 'like') as likes,
+          (SELECT COUNT(*)::integer FROM post_comments WHERE post_id = p.id) as comments,
+          (SELECT COUNT(*)::integer FROM post_engagements WHERE post_id = p.id AND engagement_type = 'share') as shares
         FROM posts p
         JOIN users u ON p.user_id = u.id
-        LEFT JOIN (
-          SELECT post_id, COUNT(*)::integer as likes
-          FROM post_engagements 
-          WHERE engagement_type = 'like'
-          GROUP BY post_id
-        ) like_count ON p.id = like_count.post_id
-        LEFT JOIN (
-          SELECT post_id, COUNT(*)::integer as comments
-          FROM post_comments 
-          GROUP BY post_id
-        ) comment_count ON p.id = comment_count.post_id
-        LEFT JOIN (
-          SELECT post_id, COUNT(*)::integer as shares
-          FROM post_engagements 
-          WHERE engagement_type = 'share'
-          GROUP BY post_id
-        ) share_count ON p.id = share_count.post_id
-        WHERE p.status = 'published'${userIdParam ? ' AND p.user_id = $3' : ''}
+        WHERE ${conditions.join(' AND ')}
         ORDER BY p.published_at DESC, p.created_at DESC
-        LIMIT $1 OFFSET $2
+        LIMIT $${limitParamIndex}
       `;
 
-      const postsResult = await client.query(
-        postsQuery,
-        userIdParam ? [limit, offset, parseInt(userIdParam)] : [limit, offset]
-      );
+      const postsResult = await client.query(postsQuery, values);
 
-      // Get all media for the fetched posts in a single query
+      // Secondary Query: Fetch Media (Lazy/Batch loading optimization)
+      // We fetch media here to prevent N+1 on frontend, but it's a separate efficient batch query.
       const postIds = postsResult.rows.map(post => post.id);
       let postsWithMedia = postsResult.rows.map(post => ({ ...post, media: [] }));
 
@@ -83,28 +108,26 @@ export async function GET(request: NextRequest) {
         }));
       }
 
-      // Get total count for pagination
-      const countQuery = `SELECT COUNT(*) FROM posts WHERE status = 'published'${userIdParam ? ' AND user_id = $1' : ''}`;
-      const countResult = await client.query(
-        countQuery,
-        userIdParam ? [parseInt(userIdParam)] : []
-      );
-      const totalCount = parseInt(countResult.rows[0].count);
+      // Calculate next cursor
+      let nextCursor = null;
+      if (postsResult.rows.length === limit) {
+        const lastPost = postsResult.rows[postsResult.rows.length - 1];
+        nextCursor = lastPost.published_at;
+      }
 
       return NextResponse.json({
         success: true,
         data: postsWithMedia,
         pagination: {
-          page,
-          limit,
-          total: totalCount,
-          totalPages: Math.ceil(totalCount / limit)
+          nextCursor,
+          limit
         }
       });
     } finally {
       client.release();
     }
   } catch (error) {
+    console.error('Feed error:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch posts' },
       { status: 500 }
@@ -113,6 +136,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // ... (Keep existing POST logic)
   try {
     const token = request.cookies.get('token')?.value;
     if (!token) {
@@ -130,7 +154,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = decoded; // verifyToken returns userId directly, not an object
+    const userId = decoded;
 
     const body = await request.json();
     const { content, scheduledAt, media } = body;
@@ -151,48 +175,11 @@ export async function POST(request: NextRequest) {
 
     const client = await pool.connect();
     try {
-      await client.query('BEGIN'); // Start transaction
+      await client.query('BEGIN');
 
       const now = new Date();
       const scheduledDate = scheduledAt ? new Date(scheduledAt) : null;
 
-      // Check daily post limit for immediate posts (not scheduled) - COMMENTED OUT
-      // if (!scheduledDate || scheduledDate <= now) {
-      //   const today = new Date();
-      //   today.setHours(0, 0, 0, 0);
-      //   const tomorrow = new Date(today);
-      //   tomorrow.setDate(tomorrow.getDate() + 1);
-      //   
-      //   const dailyPostQuery = `
-      //     SELECT COUNT(*) as post_count
-      //     FROM posts 
-      //     WHERE user_id = $1 
-      //     AND created_at >= $2 
-      //     AND created_at < $3
-      //     AND status IN ('published', 'scheduled')
-      //   `;
-      //   
-      //   const dailyPostResult = await client.query(dailyPostQuery, [
-      //     (decoded as any).userId,
-      //     today,
-      //     tomorrow
-      //   ]);
-      //   
-      //   const dailyPostCount = parseInt(dailyPostResult.rows[0].post_count);
-      //   
-      //   if (dailyPostCount >= 1) {
-      //     return NextResponse.json(
-      //       { 
-      //         success: false, 
-      //         error: 'Daily post limit reached. You can only post once per day to encourage thoughtful content.',
-      //         code: 'DAILY_LIMIT_REACHED'
-      //       },
-      //       { status: 429 }
-      //     );
-      //   }
-      // }
-
-      // Determine status based on scheduled date
       let status = 'published';
       let publishedAt: Date | null = now;
 
@@ -201,7 +188,6 @@ export async function POST(request: NextRequest) {
         publishedAt = null;
       }
 
-      // Create post
       const postQuery = `
         INSERT INTO posts (user_id, content, scheduled_at, published_at, status)
         VALUES ($1, $2, $3, $4, $5)
@@ -218,7 +204,6 @@ export async function POST(request: NextRequest) {
 
       const post = postResult.rows[0];
 
-      // Add media if provided
       if (media && media.length > 0) {
         for (const mediaItem of media) {
           const mediaQuery = `
@@ -227,7 +212,7 @@ export async function POST(request: NextRequest) {
             RETURNING id
           `;
 
-          const mediaResult = await client.query(mediaQuery, [
+          await client.query(mediaQuery, [
             post.id,
             mediaItem.media_type,
             mediaItem.cloudinary_public_id,
@@ -239,14 +224,12 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      await client.query('COMMIT'); // Commit transaction
+      await client.query('COMMIT');
 
-      // Get user info for response
       const userQuery = `SELECT id, name, profile_photo_url FROM users WHERE id = $1`;
       const userResult = await client.query(userQuery, [userId]);
       const user = userResult.rows[0];
 
-      // Get the saved media from database for response
       let savedMedia = [];
       if (media && media.length > 0) {
         const mediaQuery = `
@@ -273,7 +256,7 @@ export async function POST(request: NextRequest) {
         }
       });
     } catch (error) {
-      await client.query('ROLLBACK'); // Rollback transaction on error
+      await client.query('ROLLBACK');
       throw error;
     } finally {
       client.release();
@@ -317,7 +300,6 @@ export async function DELETE(request: NextRequest) {
 
     const client = await pool.connect();
     try {
-      // Check if the post exists and belongs to the user
       const checkQuery = `
         SELECT id, user_id FROM posts WHERE id = $1
       `;
@@ -337,7 +319,6 @@ export async function DELETE(request: NextRequest) {
         );
       }
 
-      // Delete the post (cascade will handle related data)
       const deleteQuery = `DELETE FROM posts WHERE id = $1`;
       await client.query(deleteQuery, [postId]);
 
@@ -351,6 +332,89 @@ export async function DELETE(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to delete post' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    const userId = decoded;
+    const body = await request.json();
+    const { postId, content } = body;
+
+    if (!postId || !content || content.trim().length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Post ID and content are required' },
+        { status: 400 }
+      );
+    }
+
+    // We only allow editing content for now, not media or schedule
+    if (content.length > 2000) {
+      return NextResponse.json(
+        { success: false, error: 'Content too long (max 2000 characters)' },
+        { status: 400 }
+      );
+    }
+
+    const client = await pool.connect();
+    try {
+      // Verify ownership
+      const checkQuery = `SELECT user_id FROM posts WHERE id = $1`;
+      const checkResult = await client.query(checkQuery, [postId]);
+
+      if (checkResult.rows.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Post not found' },
+          { status: 404 }
+        );
+      }
+
+      if (checkResult.rows[0].user_id !== userId) {
+        return NextResponse.json(
+          { success: false, error: 'You can only edit your own posts' },
+          { status: 403 }
+        );
+      }
+
+      // Update
+      const updateQuery = `
+        UPDATE posts 
+        SET content = $1, updated_at = NOW() 
+        WHERE id = $2
+        RETURNING id, content, updated_at
+      `;
+      const updateResult = await client.query(updateQuery, [content.trim(), postId]);
+
+      return NextResponse.json({
+        success: true,
+        data: updateResult.rows[0]
+      });
+
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Update post error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to update post' },
       { status: 500 }
     );
   }

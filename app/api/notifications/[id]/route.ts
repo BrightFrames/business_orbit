@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/config/database';
-import { getUserFromToken } from '@/lib/utils/auth';
+import { verifyToken } from '@/lib/utils/auth';
 
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> } // Params must be awaited in newer Next.js versions or treated as promise
 ) {
     try {
-        const { id } = await params; // Await params correctly
-        const user = await getUserFromToken(request);
-        if (!user) {
+        const { id } = await params;
+        const token = request.cookies.get('token')?.value;
+        if (!token) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userId = verifyToken(token);
+        if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -17,7 +22,7 @@ export async function PATCH(
             `UPDATE notifications 
              SET is_read = TRUE 
              WHERE id = $1 AND user_id = $2`,
-            [id, user.id]
+            [id, userId]
         );
 
         return NextResponse.json({ success: true });

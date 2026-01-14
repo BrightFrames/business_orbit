@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Search, Send, Bot, User, MessageSquare, AlertCircle, CheckCircle2, TrendingUp, Clock, Zap } from "lucide-react"
+import Link from "next/link"
+import { Search, Send, Bot, User, MessageSquare, AlertCircle, CheckCircle2, TrendingUp, Clock, Zap, ArrowLeft } from "lucide-react"
 import toast from "react-hot-toast"
 
 // Types matching API response
@@ -49,6 +50,10 @@ export default function NavigatorPage() {
   const [messagePreview, setMessagePreview] = useState<string>("")
   const [selectedUser, setSelectedUser] = useState<NavigatorResult | null>(null)
 
+  // Filters
+  const [minPoints, setMinPoints] = useState<string>("")
+  const [maxPoints, setMaxPoints] = useState<string>("")
+
   const handleSearch = async () => {
     if (!query.trim()) return
 
@@ -56,6 +61,11 @@ export default function NavigatorPage() {
     setError(null)
     setShowResults(false)
     setMessages((prev) => [...prev, { type: "user", content: query }])
+
+    // Construct filters
+    const filters: any = {};
+    if (minPoints) filters.min_points = parseInt(minPoints);
+    if (maxPoints) filters.max_points = parseInt(maxPoints);
 
     try {
       const res = await fetch('/api/navigator/search', {
@@ -65,6 +75,7 @@ export default function NavigatorPage() {
         },
         body: JSON.stringify({
           search_intent: query,
+          filters: filters,
           custom_message_template: "Hi {{name}}, I saw your impressive work in {{role}} and wanted to discuss a potential opportunity."
         })
       });
@@ -128,6 +139,15 @@ export default function NavigatorPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <Link href="/product/feed">
+            <Button variant="ghost" className="gap-2 pl-0 hover:pl-2 transition-all">
+              <ArrowLeft size={16} />
+              Back to Feed
+            </Button>
+          </Link>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-2">
@@ -140,7 +160,7 @@ export default function NavigatorPage() {
         </div>
 
         {/* Search Input */}
-        <Card className="p-6 mb-8 border-primary/20 shadow-md">
+        <Card className="p-6 mb-8 border-primary/20 shadow-md space-y-4">
           <div className="flex items-center space-x-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -156,6 +176,27 @@ export default function NavigatorPage() {
               <Zap className="w-4 h-4 mr-2" />
               {isLoading ? "Analyzing..." : "Find Experts"}
             </Button>
+          </div>
+
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span className="font-medium">Filter by Reputation Score (Orbit Points):</span>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                placeholder="Min Points"
+                className="w-32"
+                value={minPoints}
+                onChange={(e) => setMinPoints(e.target.value)}
+              />
+              <span>-</span>
+              <Input
+                type="number"
+                placeholder="Max Points"
+                className="w-32"
+                value={maxPoints}
+                onChange={(e) => setMaxPoints(e.target.value)}
+              />
+            </div>
           </div>
         </Card>
 

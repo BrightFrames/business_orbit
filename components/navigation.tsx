@@ -63,23 +63,18 @@ export function Navigation() {
                 <span className="text-sm text-muted-foreground">Search</span>
               </Button>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="relative group hover:bg-accent/50 cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault()
-                  toast("This feature is enabled in Phase2/Version2", {
-                    icon: "🔔",
-                    duration: 3000,
-                  })
-                }}
-              >
-                <div className="w-7 h-7 rounded-full border-2 border-foreground flex items-center justify-center transition-all group-hover:scale-105">
-                  <div className="w-3 h-3 bg-foreground rounded-full"></div>
-                </div>
-                <span className="ml-2 text-sm font-semibold">{user?.rewardScore || 0}</span>
-              </Button>
+              <Link href="/product/rewards">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="relative group hover:bg-accent/50 cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-full border-2 border-foreground flex items-center justify-center transition-all group-hover:scale-105">
+                    <div className="w-3 h-3 bg-foreground rounded-full"></div>
+                  </div>
+                  <span className="ml-2 text-sm font-semibold">{user?.rewardScore || 0}</span>
+                </Button>
+              </Link>
 
               <NotificationsPopover />
 

@@ -45,38 +45,31 @@ export default function FeedPage() {
   const isDesktop = useMediaQuery("(min-width: 1024px)")
   const [posts, setPosts] = useState<Post[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
-  const [page, setPage] = useState(1)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
 
   useEffect(() => {
     if (!loading && !user) {
       window.location.href = '/product/auth'
     } else if (!loading && user) {
-      // User is authenticated, check user type and flow
       if (isAdmin) {
-        // Admin user: can access admin panel directly
-        // No redirect needed, they can stay here or go to /admin
       } else if (isNewUser) {
-        // New regular user: follow full flow
         if (!inviteSent) {
           window.location.href = '/product/invite';
         } else if (!onboardingCompleted) {
           window.location.href = '/product/onboarding';
-        } else {
-          // New user completed flow, can stay on main page
         }
-      } else {
-        // Existing regular user: go directly to profile/main page
-        // No redirect needed, they can stay here
       }
     }
   }, [user, loading, onboardingCompleted, inviteSent, isNewUser, isAdmin])
 
-  const fetchPosts = async (pageNum: number = 1, append: boolean = false) => {
+  const fetchPosts = async (cursorParam: string | null = null, append: boolean = false) => {
     try {
       setLoadingPosts(true)
+      const url = `/api/posts?limit=10${cursorParam ? `&cursor=${cursorParam}` : ''}`
+
       const result = await safeApiCall(
-        () => fetch(`/api/posts?page=${pageNum}&limit=10`, {
+        () => fetch(url, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -87,16 +80,20 @@ export default function FeedPage() {
 
       if (result.success && result.data) {
         const responseData = result.data as any
-        const newPosts = responseData.data || responseData
+        const newPosts = responseData.data || []
+
         if (append) {
           setPosts(prev => [...prev, ...newPosts])
         } else {
           setPosts(newPosts)
         }
-        setHasMore(responseData.pagination ? responseData.pagination.page < responseData.pagination.totalPages : false)
+
+        const newCursor = responseData.pagination?.nextCursor || null
+        setNextCursor(newCursor)
+        setHasMore(!!newCursor)
       }
     } catch (error) {
-      // Error handling
+      console.error('Error fetching posts:', error)
     } finally {
       setLoadingPosts(false)
     }
@@ -123,7 +120,7 @@ export default function FeedPage() {
       }
 
       publishAndRefresh()
-      fetchPosts(1, false)
+      fetchPosts(null, false)
 
       // Set up interval to check for scheduled posts every 10 seconds (more frequent)
       // Set up interval to check for scheduled posts every 10 minutes (reduced frequency)
@@ -139,7 +136,7 @@ export default function FeedPage() {
             if (data.success && data.published > 0) {
               // console.log(`Published ${data.published} scheduled post(s), refreshing feed...`)
               setTimeout(() => {
-                fetchPosts(1, false)
+                fetchPosts(null, false)
               }, 300)
             }
           }
@@ -182,30 +179,28 @@ export default function FeedPage() {
       if (publishData.success && publishData.published > 0) {
         // Small delay to ensure database is updated, then refresh
         setTimeout(() => {
-          fetchPosts(1, false)
+          fetchPosts(null, false)
         }, 500)
       }
     } catch (error) {
       // Even if publish check fails, refresh the feed
-      fetchPosts(1, false)
+      fetchPosts(null, false)
     }
   }
 
   const handleEngagementChange = () => {
     // Refresh posts when engagement changes
-    fetchPosts(1, false)
+    fetchPosts(null, false)
   }
 
   const handlePostDeleted = () => {
     // Refresh posts when a post is deleted
-    fetchPosts(1, false)
+    fetchPosts(null, false)
   }
 
   const loadMorePosts = () => {
-    if (!loadingPosts && hasMore) {
-      const nextPage = page + 1
-      setPage(nextPage)
-      fetchPosts(nextPage, true)
+    if (!loadingPosts && hasMore && nextCursor) {
+      fetchPosts(nextCursor, true)
     }
   }
 
@@ -294,13 +289,31 @@ export default function FeedPage() {
                 <div className="flex justify-center py-6 sm:py-8">
                   <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
                 </div>
+              ) : posts.length === 0 ? (
+                <Card className="p-8 text-center space-y-4 border-dashed border-2">
+                  <div className="flex justify-center">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Sparkles className="w-8 h-8 text-blue-600" />
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-semibold">Your feed is waiting for you!</h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    Connect with professionals, join chapters, or follow industry leaders to see their latest updates here.
+                  </p>
+                  <Button
+                    variant="default"
+                    onClick={() => document.getElementById('suggested-connections')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="mt-4"
+                  >
+                    Find People to Follow
+                  </Button>
+                </Card>
               ) : (
                 <>
                   {posts.map((post) => (
                     <FeedPost
                       key={post.id}
                       post={post}
-                      onEngagementChange={handleEngagementChange}
                       onPostDeleted={handlePostDeleted}
                     />
                   ))}

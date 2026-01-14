@@ -39,10 +39,23 @@ export async function GET(request: NextRequest) {
     // Award Daily Login (Visit) Points & Check Profile Completion
     // We await these so the user sees their updated score immediately
     try {
-      await checkAndAwardProfileCompletion(user.id);
-      const awardResult = await awardOrbitPoints(user.id, 'daily_login', 'Daily login reward');
-      // Update user object with the latest total points
-      user.orbit_points = awardResult.newTotal;
+      const lastActive = user.last_active_at ? new Date(user.last_active_at).getTime() : 0;
+      const now = Date.now();
+      const THRESHOLD = 5 * 60 * 1000; // 5 mins
+
+      // Only check rewards/activity if stale to reduce DB load on navigation
+      if (now - lastActive > THRESHOLD) {
+        console.log('[Auth] Updating activity and checking rewards');
+
+        await checkAndAwardProfileCompletion(user.id);
+        const awardResult = await awardOrbitPoints(user.id, 'daily_login', 'Daily login reward');
+
+        // Update user object with the latest total points
+        user.orbit_points = awardResult.newTotal;
+
+        // Update last_active_at to prevent frequent checks
+        await pool.query('UPDATE users SET last_active_at = NOW() WHERE id = $1', [user.id]);
+      }
     } catch (err) {
       console.error('[Auth] Failed to award points:', err);
       // Continue without failing the request

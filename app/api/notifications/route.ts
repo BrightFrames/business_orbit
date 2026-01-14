@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/config/database';
-import { getUserFromToken } from '@/lib/utils/auth';
+import { verifyToken } from '@/lib/utils/auth';
 
 export async function GET(request: NextRequest) {
     try {
-        const user = await getUserFromToken(request);
-        if (!user) {
+        const token = request.cookies.get('token')?.value;
+        if (!token) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userId = verifyToken(token);
+        if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -15,14 +20,14 @@ export async function GET(request: NextRequest) {
        WHERE user_id = $1 
        ORDER BY created_at DESC 
        LIMIT 50`,
-            [user.id]
+            [userId]
         );
 
         // Get unread count
         const countResult = await pool.query(
             `SELECT COUNT(*) FROM notifications 
        WHERE user_id = $1 AND is_read = FALSE`,
-            [user.id]
+            [userId]
         );
 
         return NextResponse.json({

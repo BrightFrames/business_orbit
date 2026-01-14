@@ -8,6 +8,8 @@ export interface NavigatorSearchRequest {
     chapter?: string;
     availability?: boolean;
     price_range?: string;
+    min_points?: number;
+    max_points?: number;
   };
   limit?: number;
   custom_message_template?: string;
@@ -108,15 +110,32 @@ export class NavigatorService {
       // Note: responsiveness is mocked/placeholder for now if null
 
       // We'll also filter by role if confidence is decent
-      let roleFilter = '';
+      let whereConditions: string[] = [];
       const params: any[] = [request.limit || 20];
       let paramIdx = 2;
 
+      // Role Filter
       if (role !== 'General') {
-        roleFilter = `AND (u.profession ILIKE $${paramIdx} OR $${paramIdx} = ANY(u.skills))`;
+        whereConditions.push(`(u.profession ILIKE $${paramIdx} OR EXISTS (SELECT 1 FROM unnest(u.skills) s WHERE s ILIKE $${paramIdx}))`);
         params.push(`%${role}%`);
         paramIdx++;
       }
+
+      // Min Points Filter
+      if (request.filters?.min_points !== undefined) {
+        whereConditions.push(`u.orbit_points >= $${paramIdx}`);
+        params.push(request.filters.min_points);
+        paramIdx++;
+      }
+
+      // Max Points Filter
+      if (request.filters?.max_points !== undefined) {
+        whereConditions.push(`u.orbit_points <= $${paramIdx}`);
+        params.push(request.filters.max_points);
+        paramIdx++;
+      }
+
+      const whereClause = whereConditions.length > 0 ? 'AND ' + whereConditions.join(' AND ') : '';
 
       // Location Filter
       let locFilter = '';
@@ -134,6 +153,7 @@ export class NavigatorService {
                         u.profession, 
                         u.skills,
                         u.orbit_points,
+                        u.profile_photo_url,
                         u.last_active_at,
                         u.response_rate_score,
                         COALESCE(SUM(CASE WHEN pt.category = 'outcome' THEN pt.points ELSE 0 END), 0) as outcome_score,
@@ -146,21 +166,20 @@ export class NavigatorService {
                     AND u.id != ${request.requesting_user_id}
                     -- Must be active in last 90 days
                     AND (u.last_active_at > NOW() - INTERVAL '90 days' OR u.created_at > NOW() - INTERVAL '30 days')
-                    ${roleFilter}
+                    ${whereClause}
                     GROUP BY u.id
                 )
                 SELECT 
                     *,
-                    -- Calculate Final Weighted Score
+                    -- Calculate Final Weighted Score (We use orbit_points as the primary score for display, but this rank drives sorting)
                     (
                         (outcome_score * 0.4) + 
                         (contribution_score * 0.3) + 
-                        (COALESCE(response_rate_score, 50) * 0.2) + -- Default 50 score
-                        (CASE WHEN last_active_at > NOW() - INTERVAL '7 days' THEN 100 ELSE 0 END * 0.1) -- Recency Boost
+                        (COALESCE(response_rate_score, 50) * 0.2) + 
+                        (CASE WHEN last_active_at > NOW() - INTERVAL '7 days' THEN 100 ELSE 0 END * 0.1) +
+                        (orbit_points * 0.5) -- Add weight to total orbit points
                     ) as final_rank_score
                 FROM UserScores
-                -- Minimum Threshold: Must have SOME positive contribution or high total points
-                WHERE (outcome_score + contribution_score > 10 OR orbit_points > 100)
                 ORDER BY final_rank_score DESC
                 LIMIT $1
             `;
@@ -181,14 +200,14 @@ export class NavigatorService {
         avatar_url: row.profile_photo_url || null,
         reward_tier: this.calculateTier(row.orbit_points),
         performance_signals: {
-          score: Math.round(row.final_rank_score),
+          score: row.orbit_points || 0, // Use Orbit Points (Reward Score) directly as requested
           activity_level: this.getActivityLabel(row.last_active_at),
           response_rate: row.response_rate_score ? `${row.response_rate_score}%` : 'N/A',
           top_skills: row.skills ? row.skills.slice(0, 3) : []
         },
         availability: true, // Placeholder for now
         response_likelihood: this.calculateResponseLikelihood(row),
-        match_reason: `High performance in ${role} context`
+        match_reason: `Matches skill/role: ${role}`
       }));
 
       // 6. Message Prep
@@ -234,6 +253,7 @@ export class NavigatorService {
 
     if (score > 70 && diffDays < 3) return 'High';
     if (score < 40 || diffDays > 30) return 'Low';
+
     return 'Medium';
   }
 
