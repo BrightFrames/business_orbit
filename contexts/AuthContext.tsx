@@ -47,6 +47,9 @@ interface AuthContextType {
   fetchNotifications: () => Promise<void>;
   setNotifications: React.Dispatch<React.SetStateAction<any[]>>;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+  unreadMessageCount: number;
+  setUnreadMessageCount: React.Dispatch<React.SetStateAction<number>>;
+  fetchUnreadMessageCount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,6 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   // Helper function to clear token cookie
   const clearTokenCookie = () => {
@@ -94,6 +98,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const fetchUnreadMessageCount = async () => {
+    try {
+      const response = await fetch('/api/messages/unread-count', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setUnreadMessageCount(data.unreadCount || 0);
+      }
+    } catch (e) {
+      console.error("Failed to fetch unread message count", e);
+    }
+  };
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -118,6 +134,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setNotifications(data.notifications.items || []);
             setUnreadCount(data.notifications.unreadCount || 0);
           }
+
+          // Fetch unread message count
+          if (data.unreadMessageCount !== undefined) {
+            setUnreadMessageCount(data.unreadMessageCount);
+          } else {
+            // Fallback: fetch separately if not in bootstrap
+            fetchUnreadMessageCount();
+          }
         }
       } else {
         // Fallback or Handle 401
@@ -136,6 +160,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setInviteSent(false);
     setNotifications([]);
     setUnreadCount(0);
+    setUnreadMessageCount(0);
     clearTokenCookie();
 
     if (typeof window !== 'undefined') {
@@ -296,7 +321,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     unreadCount,
     fetchNotifications,
     setNotifications,
-    setUnreadCount
+    setUnreadCount,
+    unreadMessageCount,
+    setUnreadMessageCount,
+    fetchUnreadMessageCount
   };
 
   return (

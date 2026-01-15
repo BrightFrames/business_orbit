@@ -37,7 +37,7 @@ interface Message {
 }
 
 export default function MessagesPage() {
-    const { user, loading: authLoading } = useAuth()
+    const { user, loading: authLoading, setUnreadMessageCount, fetchUnreadMessageCount } = useAuth()
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [activeConversation, setActiveConversation] = useState<Conversation | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
@@ -102,6 +102,9 @@ export default function MessagesPage() {
             const data = await res.json()
             if (data.success) {
                 setConversations(data.conversations)
+                // Update global navbar unread message count
+                const totalUnread = data.conversations.reduce((sum: number, c: Conversation) => sum + c.unreadCount, 0)
+                setUnreadMessageCount(totalUnread)
             }
         } catch (e) {
             console.error('Fetch conversations error', e)
@@ -126,6 +129,14 @@ export default function MessagesPage() {
                         setMessages(data.messages)
                         // Mark as read via socket
                         socketRef.current?.emit('dm:read', { conversationId: activeConversation.id, userId: String(user?.id) })
+                        // Reduce the conversation's unread count locally and update navbar
+                        if (activeConversation.unreadCount > 0) {
+                            setUnreadMessageCount(prev => Math.max(0, prev - activeConversation.unreadCount))
+                            // Update local conversation to show 0 unread
+                            setConversations(prev => prev.map(c =>
+                                c.id === activeConversation.id ? { ...c, unreadCount: 0 } : c
+                            ))
+                        }
                     }
                 } catch (e) {
                     console.error('Fetch messages error', e)

@@ -11,7 +11,7 @@ import { NotificationsPopover } from "@/components/NotificationsPopover"
 import { useAuth } from "@/contexts/AuthContext"
 
 export function Navigation() {
-  const { user } = useAuth()
+  const { user, unreadMessageCount } = useAuth()
   const pathname = usePathname()
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -46,12 +46,17 @@ export function Navigation() {
                 <Link
                   key={tab.name}
                   href={tab.href}
-                  className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer ${pathname === tab.href
+                  className={`relative px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer ${pathname === tab.href
                     ? "bg-background text-foreground shadow-soft"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                     }`}
                 >
                   {tab.name}
+                  {tab.name === "Messages" && unreadMessageCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold animate-pulse">
+                      {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>
@@ -103,16 +108,24 @@ export function Navigation() {
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = pathname === tab.href
+            const showBadge = tab.name === "Messages" && unreadMessageCount > 0
             return (
               <Link
                 key={tab.name}
                 href={tab.href}
-                className={`flex flex-col items-center justify-center space-y-1 transition-all duration-200 cursor-pointer ${isActive
+                className={`relative flex flex-col items-center justify-center space-y-1 transition-all duration-200 cursor-pointer ${isActive
                   ? "text-foreground bg-accent/20"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/10"
                   }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? "scale-110" : ""} transition-transform`} />
+                <div className="relative">
+                  <Icon className={`w-5 h-5 ${isActive ? "scale-110" : ""} transition-transform`} />
+                  {showBadge && (
+                    <span className="absolute -top-2 -right-2 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center text-[8px] font-bold">
+                      {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs font-medium">{tab.name}</span>
               </Link>
             )
@@ -122,3 +135,4 @@ export function Navigation() {
     </>
   )
 }
+
