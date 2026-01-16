@@ -69,44 +69,44 @@ export default function ProductGroupsPage() {
 
   React.useEffect(() => {
     if (!showAddMembers) return
-    ;(async () => {
-      try {
-        setUsersLoading(true)
-        // Load all possible connections
-        const res = await fetch('/api/members', { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
-          const members: SimpleUser[] = Array.isArray(data?.members)
-            ? (data.members as any[]).map((m) => ({ id: Number(m.id), name: String(m.name || ''), email: String(m.email || '') }))
-            : []
-          setAllUsers(members)
-        } else {
-          setAllUsers([])
-        }
+      ; (async () => {
+        try {
+          setUsersLoading(true)
+          // Load all possible connections
+          const res = await fetch('/api/members', { credentials: 'include' })
+          if (res.ok) {
+            const data = await res.json()
+            const members: SimpleUser[] = Array.isArray(data?.members)
+              ? (data.members as any[]).map((m) => ({ id: Number(m.id), name: String(m.name || ''), email: String(m.email || '') }))
+              : []
+            setAllUsers(members)
+          } else {
+            setAllUsers([])
+          }
 
-        // Load current members of the target group to mark as Added
-        if (targetGroupId) {
-          try {
-            const res2 = await fetch(`/api/admin/management/secret-groups/${encodeURIComponent(targetGroupId)}/members`, { credentials: 'include' })
-            if (res2.ok) {
-              const data2 = await res2.json()
-              const ids = new Set<number>(
-                Array.isArray(data2?.members) ? data2.members.map((u: any) => Number(u.id)) : []
-              )
-              setCurrentMemberIds(ids)
-            } else {
+          // Load current members of the target group to mark as Added
+          if (targetGroupId) {
+            try {
+              const res2 = await fetch(`/api/admin/management/secret-groups/${encodeURIComponent(targetGroupId)}/members`, { credentials: 'include' })
+              if (res2.ok) {
+                const data2 = await res2.json()
+                const ids = new Set<number>(
+                  Array.isArray(data2?.members) ? data2.members.map((u: any) => Number(u.id)) : []
+                )
+                setCurrentMemberIds(ids)
+              } else {
+                setCurrentMemberIds(new Set())
+              }
+            } catch {
               setCurrentMemberIds(new Set())
             }
-          } catch {
+          } else {
             setCurrentMemberIds(new Set())
           }
-        } else {
-          setCurrentMemberIds(new Set())
+        } finally {
+          setUsersLoading(false)
         }
-      } finally {
-        setUsersLoading(false)
-      }
-    })()
+      })()
   }, [showAddMembers, targetGroupId])
 
   const filteredUsers = React.useMemo(() => {
@@ -118,15 +118,19 @@ export default function ProductGroupsPage() {
   const inviteUserToGroup = async (email: string) => {
     if (!targetGroupId) return
     try {
-      await fetch(`/api/groups/${encodeURIComponent(targetGroupId)}/invite`, {
+      await fetch('/api/secret-groups/invites/send', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emails: [email] })
+        body: JSON.stringify({
+          group_id: targetGroupId,
+          recipient_emails: [email]
+        })
       })
       setInvitedEmails(prev => new Set(prev).add(email))
+      toast.success('Invite sent')
     } catch {
-      // keep UI responsive
+      toast.error('Failed to send invite')
     }
   }
 
@@ -151,7 +155,7 @@ export default function ProductGroupsPage() {
       setJoinedGroups(joined.length ? joined : [])
       setSuggestedGroups(suggested)
       if (joined.length) setActiveGroup(joined[0].id)
-    } catch {}
+    } catch { }
   }, [user?.id])
 
   React.useEffect(() => { loadData() }, [loadData])
@@ -166,7 +170,7 @@ export default function ProductGroupsPage() {
       if (res.ok) {
         await loadData()
       }
-    } catch {}
+    } catch { }
   }
 
   const toggleConnection = (id: string) => {
@@ -178,7 +182,7 @@ export default function ProductGroupsPage() {
   // Fetch actual community members when modal opens
   React.useEffect(() => {
     if (!showCreateGroup) return
-    
+
     const fetchConnections = async () => {
       try {
         setConnectionsLoading(true)
@@ -420,7 +424,7 @@ export default function ProductGroupsPage() {
               <div className="flex items-center justify-between mb-2">
                 <div className="min-w-0 flex-1">
                   <h3 className="flex items-center gap-2 text-xs sm:text-sm lg:text-base font-semibold">
-                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" /> 
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                     <span className="truncate">Upcoming Events</span>
                   </h3>
                   {lastEventsUpdate && (
@@ -451,7 +455,7 @@ export default function ProductGroupsPage() {
                           <p className="text-xs text-muted-foreground">{ev.dateText} • {ev.timeText}</p>
                           {ev.venue_address && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <MapPin className="w-3 h-3 flex-shrink-0" /> 
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
                               <span className="truncate">{ev.venue_address}</span>
                             </p>
                           )}

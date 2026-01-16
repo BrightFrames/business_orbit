@@ -360,7 +360,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                     Score: {profileData.rewardScore || 0}
                   </Badge>
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground">12 mutual connections</p>
+
               </div>
             </div>
 

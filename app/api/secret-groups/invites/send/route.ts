@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     // Verify user is admin of the group or is a member (allow members to invite too)
     const groupCheck = await pool.query(
-      `SELECT g.admin_id, 
+      `SELECT g.admin_id, g.name,
               EXISTS(SELECT 1 FROM secret_group_memberships m WHERE m.group_id = g.id AND m.user_id = $2) as is_member
        FROM secret_groups g
        WHERE g.id = $1`,
@@ -36,10 +36,10 @@ export async function POST(request: NextRequest) {
 
     // Allow admin or members to send invites
     if (!isAdmin && !isMember) {
-      console.error('User not authorized to send invites:', { 
-        userId: user.id, 
-        adminId: group.admin_id, 
-        isAdmin, 
+      console.error('User not authorized to send invites:', {
+        userId: user.id,
+        adminId: group.admin_id,
+        isAdmin,
         isMember,
         adminIdType: typeof group.admin_id,
         userIdType: typeof user.id
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         const userResult = await pool.query('SELECT email FROM users WHERE id = $1', [userId])
         if (userResult.rows.length > 0) {
           const email = userResult.rows[0].email
-          
+
           // Check if invite already exists (case-insensitive email check)
           const existing = await pool.query(
             `SELECT id FROM secret_group_invites 
@@ -89,6 +89,13 @@ export async function POST(request: NextRequest) {
             )
             console.log('Created invite for user:', { userId, email, group_id, inviteId: result.rows[0].id })
             invites.push(result.rows[0])
+
+            // Notification
+            await pool.query(
+              `INSERT INTO notifications (user_id, type, title, message, link)
+               VALUES ($1, 'group_invite', 'Group Invitation', $2, '/product/groups')`,
+              [userId, `You have been invited to join the secret group "${group.name}"`]
+            )
           } else {
             console.log('Invite already exists for user:', { userId, email, group_id })
           }
@@ -124,6 +131,15 @@ export async function POST(request: NextRequest) {
           )
           console.log('Created invite for email:', { email: trimmedEmail, recipientUserId, group_id, inviteId: result.rows[0].id })
           invites.push(result.rows[0])
+
+          // Notification (if it's a registered user)
+          if (recipientUserId) {
+            await pool.query(
+              `INSERT INTO notifications (user_id, type, title, message, link)
+               VALUES ($1, 'group_invite', 'Group Invitation', $2, '/product/groups')`,
+              [recipientUserId, `You have been invited to join the secret group "${group.name}"`]
+            )
+          }
         } else {
           console.log('Invite already exists for email:', { email: trimmedEmail, group_id })
         }

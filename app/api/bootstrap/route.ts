@@ -14,32 +14,31 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const client = await pool.connect();
 
     try {
         const start = Date.now();
 
-        // Execute all queries in parallel
+        // Execute all queries in parallel using pool.query (auto-managed connections)
         const [userRes, prefsRes, invitesRes, notifsRes] = await Promise.all([
             // 1. User Profile
-            client.query(
+            pool.query(
                 `SELECT id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, 
          skills, description, profession, interest, orbit_points, last_active_at, created_at, is_admin 
          FROM users WHERE id = $1`,
                 [userId]
             ),
             // 2. User Preferences (Onboarding)
-            client.query(
+            pool.query(
                 `SELECT onboarding_completed FROM user_preferences WHERE user_id = $1`,
                 [userId]
             ),
             // 3. Invites Sent Check
-            client.query(
+            pool.query(
                 `SELECT 1 FROM invites WHERE sender_id = $1 LIMIT 1`,
                 [userId]
             ),
             // 4. Notifications (Unread Count & Latest 20)
-            client.query(
+            pool.query(
                 `SELECT 
            (SELECT COUNT(*)::int FROM notifications WHERE user_id = $1 AND is_read = false) as unread_count,
            (SELECT json_agg(n) FROM (
@@ -65,9 +64,10 @@ export async function GET(request: NextRequest) {
             items: notifsRes.rows[0]?.latest_notifications || []
         };
 
-        // Update last_active_at efficiently (fire and forget, or simplified)
-        // We do this asynchronously to not block the read
-        client.query('UPDATE users SET last_active_at = NOW() WHERE id = $1', [userId]).catch(err => console.error('Failed to update activity', err));
+        // Update last_active_at efficiently (fire and forget)
+        // Use pool.query directly - safe as it manages its own connection
+        pool.query('UPDATE users SET last_active_at = NOW() WHERE id = $1', [userId])
+            .catch(err => console.error('Failed to update activity', err));
 
         console.log(`[Bootstrap] Loaded data for user ${userId} in ${Date.now() - start}ms`);
 
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
                     bannerId: user.banner_id,
                     orbitPoints: user.orbit_points,
                     isAdmin: user.is_admin,
-                    rewardScore: user.orbit_points || 0, // Alias for AuthContext
+                    rewardScore: user.orbit_points || 0,
                 },
                 preferences: {
                     onboardingCompleted: preferences.onboarding_completed
@@ -98,7 +98,5 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('Bootstrap API Error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-    } finally {
-        client.release();
     }
 }
