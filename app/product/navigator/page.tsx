@@ -312,8 +312,10 @@ export default function NavigatorPage() {
                         <MessageSquare className="w-4 h-4 mr-2" />
                         Draft Outreach
                       </Button>
-                      <Button variant="ghost" size="sm" className="w-full sm:w-auto">
-                        View Profile
+                      <Button asChild variant="ghost" size="sm" className="w-full sm:w-auto">
+                        <Link href={`/profile/${profile.user_id}`}>
+                          View Profile
+                        </Link>
                       </Button>
                     </div>
                   </div>

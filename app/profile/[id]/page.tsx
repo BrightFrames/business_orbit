@@ -3,7 +3,7 @@
 import { UserProfile, UserGroup } from "@/lib/types/profile"
 import { safeApiCall, generateRandomMemberCount } from "@/lib/utils/api"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -37,7 +37,8 @@ const profileData = {
 // Removed static userPosts
 
 
-export default function ProfilePage({ params }: { params: { id: string } }) {
+export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const { user: currentUser, loading } = useAuth()
   const [activeTab, setActiveTab] = useState("about")
   const [loadingProfile, setLoadingProfile] = useState(true)
@@ -58,7 +59,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
 
       try {
         const result = await safeApiCall(
-          () => fetch(`/api/users/${params.id}`, {
+          () => fetch(`/api/users/${id}`, {
             credentials: 'include',
           }),
           'Failed to fetch user profile'
@@ -93,20 +94,20 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
     }
 
     fetchUserProfile()
-  }, [currentUser, loading, params.id])
+  }, [currentUser, loading, id])
 
   // Fetch connection status
   useEffect(() => {
     const fetchConnectionStatus = async () => {
-      if (!currentUser || loading || String(currentUser.id) === String(params.id)) return
+      if (!currentUser || loading || String(currentUser.id) === String(id)) return
 
       try {
-        const response = await fetch(`/api/follow?checkStatus=true&userIds=${params.id}`, {
+        const response = await fetch(`/api/follow?checkStatus=true&userIds=${id}`, {
           credentials: 'include'
         })
         const data = await response.json()
         if (data.success && data.followStatus) {
-          const status = data.followStatus[parseInt(params.id)]
+          const status = data.followStatus[parseInt(id)]
           setConnectionStatus(status || 'not-following')
         }
       } catch (error) {
@@ -115,16 +116,16 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
     }
 
     fetchConnectionStatus()
-  }, [currentUser, loading, params.id])
+  }, [currentUser, loading, id])
 
   // Fetch user posts
   useEffect(() => {
     const fetchUserPosts = async () => {
-      if (!params.id) return
+      if (!id) return
       setLoadingPosts(true)
       try {
         const res = await safeApiCall(
-          () => fetch(`/api/posts?userId=${params.id}&limit=20`, { credentials: 'include' }),
+          () => fetch(`/api/posts?userId=${id}&limit=20`, { credentials: 'include' }),
           'Failed to fetch posts'
         )
         const postsPayload: any = (res as any).data
@@ -139,7 +140,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       }
     }
     fetchUserPosts()
-  }, [params.id])
+  }, [id])
 
   const handleConnect = async () => {
     setConnectionLoading(true)
@@ -148,7 +149,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ targetUserId: parseInt(params.id) })
+        body: JSON.stringify({ targetUserId: parseInt(id) })
       })
       const data = await response.json()
       if (data.success) {
@@ -171,7 +172,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ targetUserId: parseInt(params.id), action: 'unfollow' })
+        body: JSON.stringify({ targetUserId: parseInt(id), action: 'unfollow' })
       })
       const data = await response.json()
       if (data.success) {
@@ -189,7 +190,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
 
   const isOwnProfile = Boolean(
     currentUser && (
-      String(currentUser.id) === String(params.id) ||
+      String(currentUser.id) === String(id) ||
       (profileData && String(currentUser.id) === String((profileData as any).id))
     )
   )
@@ -324,7 +325,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                         const fd = new FormData(e.currentTarget)
                         const name = (fd.get('name') as string)?.trim()
                         if (!name || name === profileData.name) return
-                        const res = await fetch(`/api/users/${params.id}`, {
+                        const res = await fetch(`/api/users/${id}`, {
                           method: 'PATCH',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ name })
@@ -416,7 +417,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                         const res = await fetch('/api/messages/start', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ targetUserId: params.id }),
+                          body: JSON.stringify({ targetUserId: id }),
                           credentials: 'include'
                         });
                         const data = await res.json();
@@ -610,7 +611,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                   {isBookingModalOpen && profileData && (
                     <BookingModal
                       expert={{
-                        id: parseInt(params.id) || 0,
+                        id: parseInt(id) || 0,
                         name: profileData.name,
                         hourly_rate: String((profileData as any).consultationRate || 150)
                       }}
