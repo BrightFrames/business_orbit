@@ -93,7 +93,14 @@ export function NotificationsPopover() {
                 variant="ghost"
                 size="sm"
                 className="relative group hover:bg-accent/50 cursor-pointer"
-                onClick={() => setOpen(!open)}
+                onClick={() => {
+                    const isOpening = !open
+                    setOpen(!open)
+                    // Mark all as read when opening the popover
+                    if (isOpening && unreadCount > 0) {
+                        markAllAsRead()
+                    }
+                }}
             >
                 <Bell className="w-5 h-5 transition-all group-hover:scale-105" />
                 {unreadCount > 0 && (

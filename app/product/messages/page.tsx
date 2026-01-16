@@ -127,16 +127,8 @@ export default function MessagesPage() {
                     const data = await res.json()
                     if (data.success) {
                         setMessages(data.messages)
-                        // Mark as read via socket
-                        socketRef.current?.emit('dm:read', { conversationId: activeConversation.id, userId: String(user?.id) })
-                        // Reduce the conversation's unread count locally and update navbar
-                        if (activeConversation.unreadCount > 0) {
-                            setUnreadMessageCount(prev => Math.max(0, prev - activeConversation.unreadCount))
-                            // Update local conversation to show 0 unread
-                            setConversations(prev => prev.map(c =>
-                                c.id === activeConversation.id ? { ...c, unreadCount: 0 } : c
-                            ))
-                        }
+                        // Note: We no longer mark as read just by viewing
+                        // Messages will be marked as read when user sends a reply
                     }
                 } catch (e) {
                     console.error('Fetch messages error', e)
@@ -167,6 +159,19 @@ export default function MessagesPage() {
             readAt: null
         }
         setMessages(prev => [...prev, tempMsg])
+
+        // Mark messages as read when replying (since user has clearly seen them)
+        if (activeConversation.unreadCount > 0) {
+            socketRef.current?.emit('dm:read', { conversationId: activeConversation.id, userId: String(user.id) })
+            // Update the navbar unread count
+            setUnreadMessageCount(prev => Math.max(0, prev - activeConversation.unreadCount))
+            // Update local conversation to show 0 unread
+            setConversations(prev => prev.map(c =>
+                c.id === activeConversation.id ? { ...c, unreadCount: 0 } : c
+            ))
+            // Update the active conversation reference
+            setActiveConversation(prev => prev ? { ...prev, unreadCount: 0 } : null)
+        }
 
         // Try Socket.IO first, fallback to HTTP API
         if (socketRef.current?.connected) {

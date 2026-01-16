@@ -33,6 +33,9 @@ export default function GroupDetailsPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [allUsers, setAllUsers] = useState<Array<{ id: number; name: string; email: string }>>([])
   const [allLoading, setAllLoading] = useState(false)
+  const [userSearch, setUserSearch] = useState("")
+  const [sendingInvite, setSendingInvite] = useState<number | null>(null)
+  const [invitedUsers, setInvitedUsers] = useState<Set<number>>(new Set())
 
   // Events state
   const [events, setEvents] = useState<Array<any>>([])
@@ -50,53 +53,53 @@ export default function GroupDetailsPage() {
   const GROUP_CHAT_HTTP_URL = process.env.NEXT_PUBLIC_CHAT_SOCKET_URL || 'http://localhost:4000'
   const GROUP_CHAT_WS_URL = GROUP_CHAT_HTTP_URL.replace(/^http/, 'ws')
   const socketRef = (globalThis as any).__groupSocketRef as { current: Socket | null } || { current: null }
-  ;(globalThis as any).__groupSocketRef = socketRef
+    ; (globalThis as any).__groupSocketRef = socketRef
   const [connecting, setConnecting] = useState(true)
 
   // Load group meta and members
   useEffect(() => {
     if (!params?.id) return
-    ;(async () => {
-      try {
-        const metaRes = await fetch('/api/admin/management/secret-groups', { credentials: 'include' })
-        if (metaRes.ok) {
-          const data = await metaRes.json()
-          const found = (data?.groups || []).find((g: any) => String(g.id) === String(params.id))
-          if (found) setGroup({ id: String(found.id), name: found.name, description: found.description, member_count: Number(found.member_count || 0) })
-        }
-      } catch {}
-      try {
-        setMembersLoading(true)
-        const memRes = await fetch(`/api/admin/management/secret-groups/${params.id}/members`, { credentials: 'include' })
-        if (memRes.ok) {
-          const data = await memRes.json()
-          setMembers(Array.isArray(data.members) ? data.members : [])
-        }
-      } finally { setMembersLoading(false) }
-    })()
+      ; (async () => {
+        try {
+          const metaRes = await fetch('/api/admin/management/secret-groups', { credentials: 'include' })
+          if (metaRes.ok) {
+            const data = await metaRes.json()
+            const found = (data?.groups || []).find((g: any) => String(g.id) === String(params.id))
+            if (found) setGroup({ id: String(found.id), name: found.name, description: found.description, member_count: Number(found.member_count || 0) })
+          }
+        } catch { }
+        try {
+          setMembersLoading(true)
+          const memRes = await fetch(`/api/admin/management/secret-groups/${params.id}/members`, { credentials: 'include' })
+          if (memRes.ok) {
+            const data = await memRes.json()
+            setMembers(Array.isArray(data.members) ? data.members : [])
+          }
+        } finally { setMembersLoading(false) }
+      })()
   }, [params?.id])
 
   // Load messages
   useEffect(() => {
     if (!params?.id || !user?.id) return
-    ;(async () => {
-      try {
-        setChatLoading(true)
-        const res = await fetch(`/api/secret-groups/${params.id}/messages?limit=50`, { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
-          setMessages(Array.isArray(data.messages) ? data.messages : [])
-          setChatCursor(data?.nextCursor || null)
-          // scroll to bottom
-          setTimeout(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight }) }, 0)
-        } else {
-          setMessages([])
-          setChatCursor(null)
+      ; (async () => {
+        try {
+          setChatLoading(true)
+          const res = await fetch(`/api/secret-groups/${params.id}/messages?limit=50`, { credentials: 'include' })
+          if (res.ok) {
+            const data = await res.json()
+            setMessages(Array.isArray(data.messages) ? data.messages : [])
+            setChatCursor(data?.nextCursor || null)
+            // scroll to bottom
+            setTimeout(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight }) }, 0)
+          } else {
+            setMessages([])
+            setChatCursor(null)
+          }
+        } finally {
+          setChatLoading(false)
         }
-      } finally {
-        setChatLoading(false)
-      }
-    })()
+      })()
   }, [params?.id, user?.id])
 
   // Connect websocket (optional)
@@ -110,7 +113,7 @@ export default function GroupDetailsPage() {
       } catch { setConnecting(false); return }
 
       if (!socketRef.current) {
-        const s = io(GROUP_CHAT_WS_URL, { autoConnect: true, withCredentials: true, timeout: 5000, reconnection: false, transports: ['polling','websocket'], upgrade: true, rememberUpgrade: true })
+        const s = io(GROUP_CHAT_WS_URL, { autoConnect: true, withCredentials: true, timeout: 5000, reconnection: false, transports: ['polling', 'websocket'], upgrade: true, rememberUpgrade: true })
         socketRef.current = s
         s.off('connect').on('connect', () => {
           setConnecting(false)
@@ -146,7 +149,7 @@ export default function GroupDetailsPage() {
     setNewText("")
 
     // optimistic add
-    const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2,8)}`
+    const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const optimistic: GroupMessage = {
       id: tempId,
       groupId: String(params.id),
@@ -194,17 +197,26 @@ export default function GroupDetailsPage() {
   // Load all users when add card opens
   useEffect(() => {
     if (!addOpen) return
-    ;(async () => {
-      try {
-        setAllLoading(true)
-        const res = await fetch('/api/users', { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
-          setAllUsers(Array.isArray(data.users) ? data.users : [])
-        }
-      } finally { setAllLoading(false) }
-    })()
-  }, [addOpen])
+    // Reset state when opening
+    setUserSearch("")
+      ; (async () => {
+        try {
+          setAllLoading(true)
+          const res = await fetch('/api/members', { credentials: 'include' })
+          if (res.ok) {
+            const data = await res.json()
+            const users = Array.isArray(data.members) ? (data.members as any[]).map((m) => ({
+              id: Number(m.id),
+              name: String(m.name || ''),
+              email: String(m.email || '')
+            })) : []
+            // Filter out users who are already members
+            const memberIds = new Set(members.map(m => m.id))
+            setAllUsers(users.filter(u => !memberIds.has(u.id)))
+          }
+        } finally { setAllLoading(false) }
+      })()
+  }, [addOpen, members])
 
   // Fetch upcoming events
   const fetchUpcomingEvents = async (forceRefresh = false) => {
@@ -247,6 +259,50 @@ export default function GroupDetailsPage() {
       }
     } finally {
       setEventsLoading(false)
+    }
+  }
+
+  // Filter users based on search
+  const filteredUsers = allUsers.filter(u => {
+    const q = userSearch.trim().toLowerCase()
+    if (!q) return true
+    return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+  })
+
+  // Send invite to a user
+  const sendInvite = async (targetUser: { id: number; name: string; email: string }) => {
+    if (!params?.id) return
+    setSendingInvite(targetUser.id)
+    try {
+      const res = await fetch('/api/secret-groups/invites/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          group_id: params.id,
+          recipient_user_ids: [targetUser.id],
+          recipient_emails: []
+        })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success && data.invites && data.invites.length > 0) {
+          toast.success(`Invite sent to ${targetUser.name}`)
+          setInvitedUsers(prev => new Set([...prev, targetUser.id]))
+        } else if (data.success && (!data.invites || data.invites.length === 0)) {
+          toast.info(`${targetUser.name} already has a pending invite`)
+          setInvitedUsers(prev => new Set([...prev, targetUser.id]))
+        } else {
+          toast.error('Failed to send invite')
+        }
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        toast.error(errorData.error || 'Failed to send invite')
+      }
+    } catch (e) {
+      toast.error('Failed to send invite')
+    } finally {
+      setSendingInvite(null)
     }
   }
 
@@ -339,7 +395,7 @@ export default function GroupDetailsPage() {
               <div className="px-3 sm:px-4 py-2 sm:py-3 border-b flex items-center justify-between">
                 <div className="font-semibold text-sm sm:text-base">Group Chat</div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Lock className="w-3 h-3 flex-shrink-0" /> 
+                  <Lock className="w-3 h-3 flex-shrink-0" />
                   <span className="hidden sm:inline">Private</span>
                 </div>
               </div>
@@ -355,13 +411,13 @@ export default function GroupDetailsPage() {
                       <div key={m.id} className={`flex ${own ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] sm:max-w-[80%] flex items-end gap-1.5 sm:gap-2 ${own ? 'flex-row-reverse' : 'flex-row'}`}>
                           <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold flex-shrink-0">
-                            {(m.senderName || 'U').slice(0,2).toUpperCase()}
+                            {(m.senderName || 'U').slice(0, 2).toUpperCase()}
                           </div>
                           <div className={`rounded-2xl px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm ${own ? 'bg-primary text-primary-foreground' : 'bg-white'}`}>
                             <div className="text-[10px] sm:text-[11px] opacity-80 mb-0.5">{own ? 'You' : m.senderName}</div>
                             <div className="whitespace-pre-wrap break-words text-xs sm:text-sm">{m.content}</div>
                             <div className="flex items-center justify-between mt-1">
-                              <div className="text-[9px] sm:text-[10px] opacity-70">{new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                              <div className="text-[9px] sm:text-[10px] opacity-70">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                             </div>
                           </div>
                         </div>
@@ -378,13 +434,13 @@ export default function GroupDetailsPage() {
                   <Button type="button" variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-10 sm:w-10">
                     <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
-                  <Input 
-                    id="group-chat-input" 
-                    value={newText} 
-                    onChange={(e) => setNewText(e.target.value)} 
-                    placeholder="Type your message..." 
-                    className="flex-1 text-sm sm:text-base" 
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }} 
+                  <Input
+                    id="group-chat-input"
+                    value={newText}
+                    onChange={(e) => setNewText(e.target.value)}
+                    placeholder="Type your message..."
+                    className="flex-1 text-sm sm:text-base"
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
                   />
                   <Button type="button" className="shrink-0 h-8 px-2 sm:h-10 sm:px-3 text-xs sm:text-sm" onClick={handleSend}>
                     <Send className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
@@ -424,23 +480,50 @@ export default function GroupDetailsPage() {
 
             {addOpen && (
               <Card className="p-3 sm:p-4 lg:p-6">
-                <h3 className="font-semibold mb-3 text-xs sm:text-sm lg:text-base">Add Members</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-xs sm:text-sm lg:text-base">Add Members</h3>
+                  <Button size="sm" variant="ghost" onClick={() => setAddOpen(false)} className="h-6 w-6 p-0">
+                    <span className="text-lg">&times;</span>
+                  </Button>
+                </div>
+                <Input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Search users..."
+                  className="mb-3 text-sm"
+                />
                 <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
                   {allLoading ? (
                     <div className="text-xs sm:text-sm text-muted-foreground">
-                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin inline-block mr-2" /> 
+                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin inline-block mr-2" />
                       Loading users...
                     </div>
-                  ) : allUsers.length === 0 ? (
-                    <div className="text-xs sm:text-sm text-muted-foreground">No users found.</div>
+                  ) : filteredUsers.length === 0 ? (
+                    <div className="text-xs sm:text-sm text-muted-foreground">
+                      {userSearch ? 'No users match your search.' : 'No users available to add.'}
+                    </div>
                   ) : (
-                    allUsers.map(u => (
+                    filteredUsers.map(u => (
                       <div key={u.id} className="flex items-center justify-between border rounded p-2 gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="text-xs sm:text-sm font-medium truncate">{u.name}</div>
                           <div className="text-xs text-muted-foreground truncate">{u.email}</div>
                         </div>
-                        <Button size="sm" className="h-6 sm:h-7 px-2 text-xs flex-shrink-0">Send Request</Button>
+                        <Button
+                          size="sm"
+                          className="h-6 sm:h-7 px-2 text-xs flex-shrink-0"
+                          onClick={() => sendInvite(u)}
+                          disabled={sendingInvite === u.id || invitedUsers.has(u.id)}
+                        >
+                          {sendingInvite === u.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : invitedUsers.has(u.id) ? (
+                            'Invited'
+                          ) : (
+                            'Invite'
+                          )}
+                        </Button>
                       </div>
                     ))
                   )}
@@ -470,7 +553,7 @@ export default function GroupDetailsPage() {
                           <p className="text-xs text-muted-foreground">{ev.dateText} • {ev.timeText}</p>
                           {ev.venue_address && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <MapPin className="w-3 h-3 flex-shrink-0" /> 
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
                               <span className="truncate">{ev.venue_address}</span>
                             </p>
                           )}
