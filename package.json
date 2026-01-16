@@ -278,6 +278,7 @@
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.5.1",
+    "@types/nodemailer": "^7.0.5",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@types/react-modal": "^3.16.3",

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Find user by email
     const result = await pool.query(
-      'SELECT id, name, email, phone, password_hash, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, orbit_points, created_at FROM users WHERE email = $1',
+      'SELECT id, name, email, phone, password_hash, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, orbit_points, email_verified, created_at FROM users WHERE email = $1',
       [email]
     );
 
@@ -87,11 +87,13 @@ export async function POST(request: NextRequest) {
         profession: user.profession,
         interest: user.interest,
         createdAt: user.created_at,
+        emailVerified: user.email_verified || false,
         location: user.location || 'Not specified',
         rewardScore: currentScore,
         mutualConnections: user.mutual_connections || 0,
         isPremium: user.is_premium || false
-      }
+      },
+      requiresEmailVerification: !user.email_verified
     });
 
     // Set cookie

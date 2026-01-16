@@ -13,6 +13,7 @@ import SuggestedConnectionsCard from "@/components/SuggestedConnectionsCard"
 import UpcomingEventsCard from "@/components/UpcomingEventsCard"
 import { safeApiCall } from "@/lib/utils/api"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import { Sparkles } from "lucide-react"
 
 // Ensure this page is rendered dynamically at runtime (avoid static generation timeouts)

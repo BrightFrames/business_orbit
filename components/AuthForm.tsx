@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { User, Mail, Phone, Lock, Eye, EyeOff, Upload, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ForgotPasswordModal from './ForgotPasswordModal';
 
 interface AuthFormProps {
   mode?: 'signin' | 'signup';
@@ -29,7 +30,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode = 'signin', setMode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const { login, signup } = useAuth();
+
+  // Listen for forgot password event from FormFields
+  useEffect(() => {
+    const handleOpenForgotPassword = () => setShowForgotPassword(true);
+    window.addEventListener('openForgotPassword', handleOpenForgotPassword);
+    return () => window.removeEventListener('openForgotPassword', handleOpenForgotPassword);
+  }, []);
 
 
 
@@ -386,6 +395,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode = 'signin', setMode }) => {
       {/* OAuth buttons - available for both modes */}
       <OAuthButtons onOAuthLogin={handleOAuthLogin} />
 
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
     </div>
   );
 };
@@ -526,6 +540,16 @@ export const FormFields: React.FC<FormFieldsProps> = ({
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          </div>
+          {/* Forgot Password Link */}
+          <div className="text-right mt-2">
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('openForgotPassword'))}
+              className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+            >
+              Forgot Password?
             </button>
           </div>
         </div>

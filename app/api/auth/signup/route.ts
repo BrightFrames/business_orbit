@@ -199,9 +199,9 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await pool.query(
-      `INSERT INTO users (name, email, phone, password_hash, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       RETURNING id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, created_at`,
+      `INSERT INTO users (name, email, phone, password_hash, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, email_verified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, FALSE)
+       RETURNING id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, email_verified, created_at`,
       [name, email, phone, passwordHash, profilePhotoUrl, profilePhotoId, bannerUrl, bannerId, skillsArray, description, profession || null, interest || null]
     );
 
@@ -210,9 +210,31 @@ export async function POST(request: NextRequest) {
     // Generate JWT token
     const token = generateToken(user.id);
 
+    // Send welcome email (async, don't block signup)
+    import('@/lib/services/email-service').then(({ sendWelcomeEmail }) => {
+      sendWelcomeEmail(email, name).catch(err => {
+        console.error('[Signup] Failed to send welcome email:', err);
+      });
+    });
+
+    // Send OTP for email verification (async, don't block signup)
+    import('@/lib/services/otp-service').then(({ createOTP }) => {
+      createOTP(email, 'verify_email', user.id).then(otpResult => {
+        if (otpResult.success && otpResult.otp) {
+          import('@/lib/services/email-service').then(({ sendOTPEmail }) => {
+            sendOTPEmail(email, name, otpResult.otp!, 'verify_email').catch(err => {
+              console.error('[Signup] Failed to send OTP email:', err);
+            });
+          });
+        }
+      }).catch(err => {
+        console.error('[Signup] Failed to create OTP:', err);
+      });
+    });
+
     // Create response
     const response = NextResponse.json({
-      message: 'User created successfully',
+      message: 'User created successfully. Please verify your email.',
       user: {
         id: user.id,
         name: user.name,
@@ -225,11 +247,13 @@ export async function POST(request: NextRequest) {
         profession: user.profession,
         interest: user.interest,
         createdAt: user.created_at,
+        emailVerified: user.email_verified || false,
         location: user.location || 'Not specified',
         rewardScore: user.reward_score || 85,
         mutualConnections: user.mutual_connections || 0,
         isPremium: user.is_premium || false
-      }
+      },
+      requiresEmailVerification: true
     }, { status: 201 });
 
     // Set cookie
