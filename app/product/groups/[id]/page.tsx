@@ -181,10 +181,20 @@ export default function GroupDetailsPage() {
     }
 
     try {
-      const s = socketRef.current
       if (s?.connected) {
-        s.emit('group:send', { id: tempId, groupId: String(params.id), senderId: String(user?.id || ''), content: text }, (ack?: { ok: boolean }) => {
-          if (!ack?.ok) sendViaAPI()
+        s.emit('group:send', { id: tempId, groupId: String(params.id), senderId: String(user?.id || ''), content: text }, (ack?: { ok: boolean; message?: GroupMessage }) => {
+          if (ack?.ok && ack.message) {
+            setMessages(prev => {
+              // If real message already exists (from listener race), just remove the temp one
+              if (prev.some(m => m.id === ack.message!.id)) {
+                return prev.filter(m => m.id !== tempId)
+              }
+              // Otherwise replace temp with real
+              return prev.map(m => m.id === tempId ? ack.message! : m)
+            })
+          } else if (!ack?.ok) {
+            sendViaAPI()
+          }
         })
       } else {
         await sendViaAPI()

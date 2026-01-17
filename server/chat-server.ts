@@ -311,7 +311,7 @@ io.on('connection', (socket) => {
         console.error('Error invoking group reward logic:', e)
       }
 
-      ack?.({ ok: true })
+      ack?.({ ok: true, message: saved })
     } catch (e) {
       console.error('group:send error', e)
       ack?.({ ok: false, error: 'internal error' })

@@ -116,7 +116,18 @@ export default function ChapterChatPage(): React.JSX.Element {
     setInput("");
 
     try {
-      socketRef.current?.emit("sendMessage", optimistic);
+      socketRef.current?.emit("sendMessage", optimistic, (ack?: { ok: boolean; message?: ChatMessage }) => {
+        if (ack?.ok && ack.message) {
+          setMessages((prev) => {
+            // Deduplicate if listener already added it
+            if (prev.some((m) => m.id === ack.message!.id)) {
+              return prev.filter((m) => m.id !== optimistic.id);
+            }
+            // Replace optimistic
+            return prev.map((m) => (m.id === optimistic.id ? ack.message! : m));
+          });
+        }
+      });
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error("sendMessage error", e);
