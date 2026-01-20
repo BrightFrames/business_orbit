@@ -468,7 +468,7 @@ io.on('connection', (socket) => {
 })
 
 // Prefer platform-provided PORT (Render/Railway), fallback to custom var, then 3001 locally (matching frontend)
-const basePort = Number(process.env.PORT || process.env.CHAT_SERVER_PORT || 3001)
+const basePort = Number(process.env.CHAT_SERVER_PORT || process.env.PORT || 3001)
 const strictPort = String(process.env.CHAT_SERVER_PORT_STRICT || '').toLowerCase() === 'true'
 
 function listenWithRetry(startPort: number, maxAttempts: number): void {

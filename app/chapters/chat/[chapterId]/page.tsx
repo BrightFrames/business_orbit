@@ -48,10 +48,16 @@ export default function ChapterChatPage(): React.JSX.Element {
     async function fetchHistory() {
       try {
         const res = await fetch(`/api/chat/${chapterId}/messages`, { credentials: "include" });
-        if (!res.ok) throw new Error(`Failed to load messages: ${res.status}`);
-        const data = (await res.json()) as { success: boolean; messages: ChatMessage[] };
-        if (!cancelled && data?.success) {
-          setMessages(data.messages);
+        const text = await res.text();
+
+        try {
+          const data = JSON.parse(text) as { success: boolean; messages: ChatMessage[] };
+          if (!cancelled && data?.success) {
+            setMessages(data.messages);
+          }
+        } catch (jsonError) {
+          console.error("Failed to parse chat messages JSON:", jsonError);
+          console.error("Raw response (first 500 chars):", text.slice(0, 500));
         }
       } catch (e) {
         // eslint-disable-next-line no-console
