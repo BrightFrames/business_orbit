@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/utils/auth';
 import { uploadFeed } from '@/lib/config/cloudinary';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     // Upload to Cloudinary directly
     const { cloudinary } = await import('@/lib/config/cloudinary');
-    
+
     const uploadResult = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_stream(
         {
