@@ -38,67 +38,214 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
   // Fetch user profile data
   useEffect(() => {
-    try {
-      const response = await fetch(`/api/users/${id}`, {
-        credentials: 'include',
-      })
+    const fetchUserProfile = async () => {
+      // Wait for auth to finish loading before making any decisions
+      if (loading) return
 
-      if (response.status === 401) {
-        window.location.href = '/product/auth'
+      // If auth is done loading and no user, we can't fetch (middleware should have redirected)
+      if (!currentUser) {
+        setLoadingProfile(false)
         return
       }
 
-      const result = await response.json()
+      try {
+        const response = await fetch(`/api/users/${id}`, {
+          credentials: 'include',
+        })
 
-      if (response.ok && result.user) {
-        setProfileData(result.user)
+        if (response.status === 401) {
+          window.location.href = '/product/auth'
+          return
+        }
 
-        // Create groups array from chapters and secret groups
-        const groups: UserGroup[] = [
-          ...(result.groups?.chapters || []).map((chapter: string) => ({
-            name: chapter,
-            type: "chapter" as const,
-            members: generateRandomMemberCount('chapter')
-          })),
-          ...(result.groups?.secretGroups || []).map((group: string) => ({
-            name: group,
-            type: "secret" as const,
-            members: generateRandomMemberCount('secret')
-          }))
-        ]
-        setUserGroups(groups)
-      } else {
-        console.error('Error fetching user profile:', result.error)
-        setError(result.error || 'Failed to load profile')
-        if (response.status === 404) setError('User not found')
+        const result = await response.json()
+
+        if (response.ok && result.user) {
+          setProfileData(result.user)
+
+          // Create groups array from chapters and secret groups
+          const groups: UserGroup[] = [
+            ...(result.groups?.chapters || []).map((chapter: string) => ({
+              name: chapter,
+              type: "chapter" as const,
+              members: generateRandomMemberCount('chapter')
+            })),
+            ...(result.groups?.secretGroups || []).map((group: string) => ({
+              name: group,
+              type: "secret" as const,
+              members: generateRandomMemberCount('secret')
+            }))
+          ]
+          setUserGroups(groups)
+        } else {
+          console.error('Error fetching user profile:', result.error)
+          setError(result.error || 'Failed to load profile')
+          if (response.status === 404) setError('User not found')
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error)
+        setError('Network error or server unavailable')
+      } finally {
+        setLoadingProfile(false)
       }
-    } catch (error) {
-      console.error('Unexpected error:', error)
-      setError('Network error or server unavailable')
-    } finally {
-      setLoadingProfile(false)
     }
-  }
 
     fetchUserProfile()
   }, [currentUser, loading, id])
+}, [currentUser, loading, id])
 
 // Fetch connection status
 useEffect(() => {
-  // ... existing connection status logic ...
-}, [currentUser, loading, id]) // This hook body needs to be preserved or we can leave it as is if we duplicate the component body correctly. 
+  const fetchConnectionStatus = async () => {
+    // Wait for auth to finish loading
+    if (loading) return
+    // Skip if not logged in or viewing own profile
+    if (!currentUser || String(currentUser.id) === String(id)) return
 
-// Wait, replacing lines 40-261 covers the fetch AND the render logic. I need to be careful.
-// I will introduce the error state variable at the top.
+    try {
+      const response = await fetch(`/api/follow?checkStatus=true&userIds=${id}`, {
+        credentials: 'include'
+      })
+      const data = await response.json()
+      if (data.success && data.followStatus) {
+        const status = data.followStatus[parseInt(id)]
+        setConnectionStatus(status || 'not-following')
+      }
+    } catch (error) {
+      console.error('Error fetching connection status:', error)
+    }
+  }
 
+  fetchConnectionStatus()
+}, [currentUser, loading, id])
 
-const [error, setError] = useState<string | null>(null) // Add this state
+// Fetch user posts
+useEffect(() => {
+  const fetchUserPosts = async () => {
+    if (!id) return
+    setLoadingPosts(true)
+    try {
+      const res = await safeApiCall(
+        () => fetch(`/api/posts?userId=${id}&limit=20`, { credentials: 'include' }),
+        'Failed to fetch posts'
+      )
+      const postsPayload: any = (res as any).data
+      const items = postsPayload?.data
+      if ((res as any).success && Array.isArray(items)) {
+        setUserPosts(items)
+      } else {
+        setUserPosts([])
+      }
+    } finally {
+      setLoadingPosts(false)
+    }
+  }
+  fetchUserPosts()
+}, [id])
 
-// ... (rest of state definitions)
+const handleConnect = async () => {
+  setConnectionLoading(true)
+  try {
+    const response = await fetch('/api/follow-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ targetUserId: parseInt(id) })
+    })
+    const data = await response.json()
+    if (data.success) {
+      setConnectionStatus('pending')
+      toast.success('Connection request sent!')
+    } else {
+      toast.error(data.error || 'Failed to send request')
+    }
+  } catch (error) {
+    toast.error('Failed to send connection request')
+  } finally {
+    setConnectionLoading(false)
+  }
+}
 
-// ... (fetch logic update)
+const handleDisconnect = async () => {
+  setConnectionLoading(true)
+  try {
+    const response = await fetch('/api/follow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ targetUserId: parseInt(id), action: 'unfollow' })
+    })
+    const data = await response.json()
+    if (data.success) {
+      setConnectionStatus('not-following')
+      toast.success('Disconnected successfully!')
+    } else {
+      toast.error(data.error || 'Failed to disconnect')
+    }
+  } catch (error) {
+    toast.error('Failed to disconnect')
+  } finally {
+    setConnectionLoading(false)
+  }
+}
 
-// ... Rest of component ...
+const isOwnProfile = Boolean(
+  currentUser && (
+    String(currentUser.id) === String(id) ||
+    (profileData && String(currentUser.id) === String((profileData as any).id))
+  )
+)
+
+const uploadImage = async (file: File, type: 'profile' | 'banner') => {
+  if (!file) return
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+  if (!allowedTypes.includes(file.type)) return
+  if (file.size > 5 * 1024 * 1024) return
+  try {
+    setUploading(prev => ({ ...prev, [type]: true }))
+    const form = new FormData()
+    form.append(type === 'profile' ? 'profilePhoto' : 'banner', file)
+    const res = await fetch(`/api/images/${type === 'profile' ? 'profile' : 'banner'}`, {
+      method: 'PUT',
+      body: form,
+      credentials: 'include'
+    })
+    if (!res.ok) throw new Error('Upload failed')
+    const data = await res.json()
+    // Merge into profileData so UI updates instantly
+    setProfileData(prev => prev ? ({
+      ...prev,
+      profilePhotoUrl: type === 'profile' ? data.user.profilePhotoUrl : prev.profilePhotoUrl,
+      bannerUrl: type === 'banner' ? data.user.bannerUrl : prev.bannerUrl,
+    }) : prev)
+    toast.success(`${type === 'profile' ? 'Profile photo' : 'Banner'} updated!`)
+  } catch (e) {
+    toast.error('Upload failed')
+  } finally {
+    setUploading(prev => ({ ...prev, [type]: false }))
+  }
+}
+
+const onProfileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0]
+  if (file) uploadImage(file, 'profile')
+}
+
+const onBannerInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0]
+  if (file) uploadImage(file, 'banner')
+}
+
+if (loading || loadingProfile) {
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading profile...</p>
+      </div>
+    </div>
+  )
+}
 
 if (!profileData) {
   return (
