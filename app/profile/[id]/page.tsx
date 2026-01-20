@@ -8,39 +8,20 @@ import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DisplayPostCard } from "@/components/PostCard"
 import FeedPost from "@/components/FeedPost"
-import { MapPin, MessageCircle, UserPlus, Calendar, Star, Award, Users, Lock, DollarSign, Clock, Edit } from "lucide-react"
+import {
+  MapPin, MessageCircle, UserPlus, Calendar, Star, Award, Users, Lock,
+  DollarSign, Clock, Edit, Upload, Briefcase, GraduationCap,
+  ExternalLink, MoreHorizontal, CheckCircle2, Link2
+} from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
-import { Upload } from "lucide-react"
 import toast from "react-hot-toast"
 import { BookingModal } from '@/components/consultations/BookingModal'
-
-const profileData = {
-  id: "sarah-chen",
-  name: "Sarah Chen",
-  role: "Senior Product Manager",
-  location: "San Francisco, CA",
-  rewardScore: 85,
-  avatar: "SC",
-  coverPattern:
-    "data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23000000' fillOpacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E",
-  bio: "Passionate product manager with 8+ years of experience building AI-powered solutions. I love connecting with fellow entrepreneurs and sharing insights about product strategy, user research, and team leadership.",
-  skills: ["Product Strategy", "AI/ML", "User Research", "Team Leadership", "Data Analytics", "Agile Methodologies"],
-  interests: ["Artificial Intelligence", "Startup Ecosystem", "Design Thinking", "Mentoring", "Tech Innovation"],
-  consultationRate: 150, // Auto-calculated based on reward score
-  isConnected: false,
-  mutualConnections: 12,
-}
-
-// Removed static userPosts
 
 
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user: currentUser, loading } = useAuth()
-  const [activeTab, setActiveTab] = useState("about")
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [connectionStatus, setConnectionStatus] = useState<'not-following' | 'pending' | 'following'>('not-following')
   const [connectionLoading, setConnectionLoading] = useState(false)
@@ -51,11 +32,20 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [loadingPosts, setLoadingPosts] = useState(false)
   const [uploading, setUploading] = useState<{ profile: boolean; banner: boolean }>({ profile: false, banner: false })
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
+  const [showAllSkills, setShowAllSkills] = useState(false)
+  const [showFullAbout, setShowFullAbout] = useState(false)
 
   // Fetch user profile data
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!currentUser || loading) return
+      // Wait for auth to finish loading before making any decisions
+      if (loading) return
+
+      // If auth is done loading and no user, we can't fetch (middleware should have redirected)
+      if (!currentUser) {
+        setLoadingProfile(false)
+        return
+      }
 
       try {
         const result = await safeApiCall(
@@ -99,7 +89,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   // Fetch connection status
   useEffect(() => {
     const fetchConnectionStatus = async () => {
-      if (!currentUser || loading || String(currentUser.id) === String(id)) return
+      // Wait for auth to finish loading
+      if (loading) return
+      // Skip if not logged in or viewing own profile
+      if (!currentUser || String(currentUser.id) === String(id)) return
 
       try {
         const response = await fetch(`/api/follow?checkStatus=true&userIds=${id}`, {
@@ -217,6 +210,9 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         profilePhotoUrl: type === 'profile' ? data.user.profilePhotoUrl : prev.profilePhotoUrl,
         bannerUrl: type === 'banner' ? data.user.bannerUrl : prev.bannerUrl,
       }) : prev)
+      toast.success(`${type === 'profile' ? 'Profile photo' : 'Banner'} updated!`)
+    } catch (e) {
+      toast.error('Upload failed')
     } finally {
       setUploading(prev => ({ ...prev, [type]: false }))
     }
@@ -234,10 +230,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
   if (loading || loadingProfile) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Loading profile...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
         </div>
       </div>
     )
@@ -245,275 +241,367 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
   if (!profileData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">User Not Found</h2>
-          <p className="text-muted-foreground">The user you're looking for doesn't exist.</p>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center bg-white p-8 rounded-lg shadow-sm">
+          <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <Users className="w-8 h-8 text-gray-400" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">User Not Found</h2>
+          <p className="text-gray-500">The profile you're looking for doesn't exist or has been removed.</p>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={() => window.history.back()}
+          >
+            Go Back
+          </Button>
         </div>
       </div>
     )
   }
 
+  const displayedSkills = showAllSkills ? (profileData.skills || []) : (profileData.skills || []).slice(0, 5)
+  const aboutText = profileData.description || 'No description available.'
+  const shouldTruncateAbout = aboutText.length > 300
+
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
+    <div className="min-h-screen bg-gray-100 pb-20 md:pb-8">
       <Navigation />
 
-      <div className="max-w-6xl mx-auto">
-        {/* Cover Banner */}
-        <div
-          className="h-24 sm:h-32 md:h-40 lg:h-48 bg-muted relative overflow-hidden group"
-          style={{
-            backgroundImage: profileData.bannerUrl
-              ? `url("${profileData.bannerUrl}")`
-              : `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23000000' fillOpacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent"></div>
-          {isOwnProfile && (
-            <>
-              <input id="bannerInput" type="file" accept="image/*" className="hidden" onChange={onBannerInputChange} />
-              <button
-                disabled={uploading.banner}
-                onClick={() => document.getElementById('bannerInput')?.click()}
-                className="absolute right-3 bottom-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs px-3 py-1 rounded flex items-center gap-1"
-                aria-label="Change banner"
-              >
-                <Upload className="w-3 h-3" /> {uploading.banner ? 'Uploading…' : 'Change Banner'}
-              </button>
-            </>
-          )}
-        </div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        {/* Main Profile Card - LinkedIn Style */}
+        <Card className="overflow-hidden mb-4 border-0 shadow-sm">
+          {/* Cover Banner */}
+          <div
+            className="h-32 sm:h-44 md:h-52 relative overflow-hidden group"
+            style={{
+              background: profileData.bannerUrl
+                ? `url("${profileData.bannerUrl}") center/cover no-repeat`
+                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            }}
+          >
+            {isOwnProfile && (
+              <>
+                <input id="bannerInput" type="file" accept="image/*" className="hidden" onChange={onBannerInputChange} />
+                <button
+                  disabled={uploading.banner}
+                  onClick={() => document.getElementById('bannerInput')?.click()}
+                  className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white text-gray-700 text-sm px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg"
+                  aria-label="Change banner"
+                >
+                  <Upload className="w-4 h-4" />
+                  {uploading.banner ? 'Uploading...' : 'Edit cover'}
+                </button>
+              </>
+            )}
+          </div>
 
-        {/* Profile Header */}
-        <div className="px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6">
-          <div className="flex flex-col space-y-3 sm:space-y-4 -mt-8 sm:-mt-12 md:-mt-16 relative z-10">
-            {/* Profile Picture and Basic Info */}
-            <div className="flex flex-col items-center lg:items-start">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 bg-background rounded-full border-4 border-background shadow-lg flex items-center justify-center text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 sm:mb-3 overflow-hidden relative group">
-                {profileData.profilePhotoUrl ? (
-                  <img
-                    src={profileData.profilePhotoUrl}
-                    alt={profileData.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-primary">
-                    {profileData.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </span>
-                )}
+          {/* Profile Info Section */}
+          <div className="px-6 pb-6 relative">
+            {/* Profile Photo - Overlapping Banner */}
+            <div className="-mt-16 sm:-mt-20 mb-4 flex justify-between items-end">
+              <div className="relative group">
+                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden">
+                  {profileData.profilePhotoUrl ? (
+                    <img
+                      src={profileData.profilePhotoUrl}
+                      alt={profileData.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-4xl sm:text-5xl font-semibold">
+                      {profileData.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                </div>
                 {isOwnProfile && (
                   <>
                     <input id="profileInput" type="file" accept="image/*" className="hidden" onChange={onProfileInputChange} />
                     <button
                       disabled={uploading.profile}
                       onClick={() => document.getElementById('profileInput')?.click()}
-                      className="absolute inset-0 bg-black/40 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs"
+                      className="absolute bottom-2 right-2 bg-white rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-50"
                       aria-label="Change profile photo"
                     >
-                      <Upload className="w-3 h-3 mr-1" /> {uploading.profile ? 'Uploading…' : 'Change Photo'}
+                      <Edit className="w-4 h-4 text-gray-600" />
                     </button>
                   </>
                 )}
               </div>
 
-              <div className="text-center lg:text-left space-y-2 bg-background/80 backdrop-blur-sm rounded-lg p-3 sm:p-4 lg:bg-transparent lg:backdrop-blur-none lg:p-0">
-                <div className="flex items-center justify-center lg:justify-start gap-2">
-                  {isOwnProfile ? (
-                    <form
-                      onSubmit={async (e) => {
-                        e.preventDefault()
-                        const fd = new FormData(e.currentTarget)
-                        const name = (fd.get('name') as string)?.trim()
-                        if (!name || name === profileData.name) return
-                        const res = await fetch(`/api/users/${id}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ name })
-                        })
-                        if (res.ok) {
-                          const data = await res.json()
-                          setProfileData(prev => prev ? ({ ...prev, name: data.user.name }) : prev)
+              {/* Action Buttons - Desktop */}
+              <div className="hidden sm:flex gap-2">
+                {!isOwnProfile ? (
+                  <>
+                    {connectionStatus === 'following' ? (
+                      <Button
+                        variant="outline"
+                        onClick={handleDisconnect}
+                        disabled={connectionLoading}
+                        className="rounded-full border-blue-600 text-blue-600 hover:bg-blue-50"
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        {connectionLoading ? 'Processing...' : 'Connected'}
+                      </Button>
+                    ) : connectionStatus === 'pending' ? (
+                      <Button
+                        variant="outline"
+                        disabled
+                        className="rounded-full"
+                      >
+                        <Clock className="w-4 h-4 mr-2" />
+                        Pending
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleConnect}
+                        disabled={connectionLoading}
+                        className="rounded-full bg-blue-600 hover:bg-blue-700"
+                      >
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        {connectionLoading ? 'Sending...' : 'Connect'}
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch('/api/messages/start', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ targetUserId: id }),
+                            credentials: 'include'
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            window.location.href = '/product/messages';
+                          } else {
+                            toast.error('Failed to start conversation');
+                          }
+                        } catch (e) {
+                          toast.error('Error starting conversation');
                         }
                       }}
-                      className="flex items-center gap-2"
                     >
-                      <input
-                        name="name"
-                        defaultValue={profileData.name}
-                        className="px-2 py-1 border rounded text-sm sm:text-base md:text-lg"
-                      />
-                      <Button type="submit" size="sm" className="text-xs sm:text-sm">Save</Button>
-                    </form>
-                  ) : (
-                    <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{profileData.name}</h1>
-                  )}
-                </div>
-                <p className="text-sm sm:text-base md:text-lg text-muted-foreground">{profileData.description || 'Professional'}</p>
-
-                <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 lg:space-x-4 text-xs sm:text-sm text-muted-foreground">
-                  <div className="flex items-center justify-center lg:justify-start">
-                    <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                    {profileData.phone || 'Location not specified'}
-                  </div>
-                  <Badge variant="secondary" className="flex items-center justify-center w-fit mx-auto lg:mx-0">
-                    <Award className="w-3 h-3 mr-1" />
-                    Score: {profileData.rewardScore || 0}
-                  </Badge>
-                </div>
-
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Message
+                    </Button>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <MoreHorizontal className="w-5 h-5" />
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="rounded-full"
+                    onClick={() => window.location.href = '/product/settings'}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit profile
+                  </Button>
+                )}
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-3 pt-2 sm:pt-4">
-              {!isOwnProfile && (
+            {/* Name & Headline */}
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">{profileData.name}</h1>
+              <p className="text-base sm:text-lg text-gray-700">
+                {profileData.profession || 'Professional'}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 pt-1">
+                {profileData.phone && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {profileData.phone}
+                  </span>
+                )}
+                {userGroups.length > 0 && (
+                  <>
+                    <span>•</span>
+                    <span className="text-blue-600 hover:underline cursor-pointer">
+                      {userGroups.length} group{userGroups.length !== 1 ? 's' : ''}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Orbit Score Badge */}
+              <div className="flex items-center gap-2 pt-2">
+                <Badge variant="secondary" className="bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1">
+                  <Award className="w-4 h-4 mr-1" />
+                  {profileData.rewardScore || 0} Orbit Points
+                </Badge>
+              </div>
+            </div>
+
+            {/* Mobile Action Buttons */}
+            <div className="flex sm:hidden gap-2 mt-4">
+              {!isOwnProfile ? (
                 <>
                   {connectionStatus === 'following' ? (
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       onClick={handleDisconnect}
                       disabled={connectionLoading}
-                      className="w-full sm:w-auto text-xs sm:text-sm"
+                      className="flex-1 rounded-full border-blue-600 text-blue-600"
+                      size="sm"
                     >
-                      {connectionLoading ? (
-                        <span className="animate-pulse">Processing...</span>
-                      ) : (
-                        <>
-                          <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                          Connected (Click to Disconnect)
-                        </>
-                      )}
+                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                      Connected
                     </Button>
                   ) : connectionStatus === 'pending' ? (
-                    <Button
-                      variant="outline"
-                      disabled
-                      className="w-full sm:w-auto text-xs sm:text-sm bg-gray-100"
-                    >
-                      <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      Request Sent
+                    <Button variant="outline" disabled className="flex-1 rounded-full" size="sm">
+                      <Clock className="w-4 h-4 mr-1" />
+                      Pending
                     </Button>
                   ) : (
                     <Button
-                      variant="default"
                       onClick={handleConnect}
                       disabled={connectionLoading}
-                      className="w-full sm:w-auto text-xs sm:text-sm"
+                      className="flex-1 rounded-full bg-blue-600 hover:bg-blue-700"
+                      size="sm"
                     >
-                      {connectionLoading ? (
-                        <span className="animate-pulse">Sending...</span>
-                      ) : (
-                        <>
-                          <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                          Connect
-                        </>
-                      )}
+                      <UserPlus className="w-4 h-4 mr-1" />
+                      Connect
                     </Button>
                   )}
-                  <Button
-                    variant="outline"
-                    className="w-full sm:w-auto bg-transparent text-xs sm:text-sm"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch('/api/messages/start', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ targetUserId: id }),
-                          credentials: 'include'
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                          window.location.href = '/product/messages';
-                        } else {
-                          toast.error('Failed to start conversation');
-                        }
-                      } catch (e) {
-                        toast.error('Error starting conversation');
-                      }
-                    }}
-                  >
-                    <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <Button variant="outline" className="flex-1 rounded-full" size="sm">
+                    <MessageCircle className="w-4 h-4 mr-1" />
                     Message
                   </Button>
                 </>
-              )}
-              {isOwnProfile && (
-                <Button variant="outline" className="w-full sm:w-auto bg-transparent text-xs sm:text-sm" onClick={() => setActiveTab('about')}>
-                  Edit Profile
+              ) : (
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-full"
+                  size="sm"
+                  onClick={() => window.location.href = '/product/settings'}
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit profile
                 </Button>
               )}
             </div>
           </div>
-        </div>
+        </Card>
 
-        {/* Profile Content */}
-        <div className="px-4 sm:px-6 lg:px-8">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <div className="overflow-x-auto">
-              <TabsList className="grid w-full grid-cols-4 min-w-max lg:min-w-0">
-                <TabsTrigger value="about" className="whitespace-nowrap text-xs sm:text-sm">
-                  About
-                </TabsTrigger>
-                <TabsTrigger value="activity" className="whitespace-nowrap text-xs sm:text-sm">
-                  Activity
-                </TabsTrigger>
-                <TabsTrigger value="groups" className="whitespace-nowrap text-xs sm:text-sm">
-                  Groups
-                </TabsTrigger>
-                <TabsTrigger value="consultation" className="whitespace-nowrap text-xs sm:text-sm">
-                  Consultation
-                </TabsTrigger>
-              </TabsList>
-            </div>
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Left Column - Main Content */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* About Section */}
+            <Card className="p-6 border-0 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">About</h2>
+              <div className="text-gray-700 text-sm leading-relaxed">
+                {shouldTruncateAbout && !showFullAbout ? (
+                  <>
+                    {aboutText.slice(0, 300)}...
+                    <button
+                      onClick={() => setShowFullAbout(true)}
+                      className="text-blue-600 hover:underline ml-1 font-medium"
+                    >
+                      see more
+                    </button>
+                  </>
+                ) : (
+                  aboutText
+                )}
+                {showFullAbout && shouldTruncateAbout && (
+                  <button
+                    onClick={() => setShowFullAbout(false)}
+                    className="text-blue-600 hover:underline ml-1 font-medium block mt-2"
+                  >
+                    see less
+                  </button>
+                )}
+              </div>
+            </Card>
 
-            <TabsContent value="about" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-              <Card className="p-3 sm:p-4 md:p-6">
-                <h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">About</h3>
-                <p className="text-muted-foreground leading-relaxed text-xs sm:text-sm md:text-base">
-                  {profileData.description || 'No description available.'}
-                </p>
-              </Card>
-
-              <Card className="p-3 sm:p-4 md:p-6">
-                <h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Skills</h3>
-                <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  {(profileData.skills || []).map((skill: string) => (
-                    <Badge key={skill} variant="outline" className="text-xs sm:text-sm">
-                      {skill}
-                    </Badge>
-                  ))}
+            {/* Experience/Profession Section */}
+            {profileData.profession && (
+              <Card className="p-6 border-0 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Experience</h2>
+                <div className="flex gap-4">
+                  <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
+                    <Briefcase className="w-6 h-6 text-gray-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900">{profileData.profession}</h3>
+                    <p className="text-sm text-gray-500">Current Position</p>
+                  </div>
                 </div>
               </Card>
+            )}
 
-              {profileData.interest && (
-                <Card className="p-3 sm:p-4 md:p-6">
-                  <h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Interests</h3>
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    <Badge variant="secondary" className="text-xs sm:text-sm">
-                      {profileData.interest}
-                    </Badge>
-                  </div>
-                </Card>
-              )}
+            {/* Skills Section */}
+            {profileData.skills && profileData.skills.length > 0 && (
+              <Card className="p-6 border-0 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Skills</h2>
+                  {isOwnProfile && (
+                    <Button variant="ghost" size="sm" className="text-gray-500">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {displayedSkills.map((skill: string, index: number) => (
+                    <div key={skill} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center">
+                          <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <span className="font-medium text-gray-900">{skill}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {profileData.skills.length > 5 && (
+                  <button
+                    onClick={() => setShowAllSkills(!showAllSkills)}
+                    className="mt-4 text-blue-600 hover:underline text-sm font-medium"
+                  >
+                    {showAllSkills
+                      ? 'Show fewer skills'
+                      : `Show all ${profileData.skills.length} skills`}
+                  </button>
+                )}
+              </Card>
+            )}
 
-            </TabsContent>
+            {/* Interests Section */}
+            {profileData.interest && (
+              <Card className="p-6 border-0 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">Interests</h2>
+                <Badge variant="secondary" className="text-sm px-3 py-1">
+                  {profileData.interest}
+                </Badge>
+              </Card>
+            )}
 
-            <TabsContent value="activity" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm sm:text-base">Recent Activity</h3>
-                <Badge variant="outline" className="text-xs">{userPosts.length} posts</Badge>
+            {/* Activity Section */}
+            <Card className="p-6 border-0 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Activity</h2>
+                <span className="text-sm text-blue-600">{userPosts.length} post{userPosts.length !== 1 ? 's' : ''}</span>
               </div>
               {loadingPosts ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                  <p className="text-sm text-muted-foreground">Loading posts...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-500">Loading activity...</p>
                 </div>
               ) : userPosts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No posts yet.</p>
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center">
+                    <Edit className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-sm">No posts yet</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {userPosts.map((post) => (
+                  {userPosts.slice(0, 3).map((post) => (
                     <FeedPost
                       key={post.id}
                       post={{
@@ -524,125 +612,112 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                       }}
                     />
                   ))}
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="groups" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm sm:text-base">Groups & Chapters</h3>
-                <Badge variant="outline" className="text-xs">{userGroups.length} groups</Badge>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {userGroups.map((group) => (
-                  <Card key={group.name} className="p-3 sm:p-4">
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                        {group.type === "chapter" ? <Users className="w-5 h-5 sm:w-6 sm:h-6" /> : <Lock className="w-5 h-5 sm:w-6 sm:h-6" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm sm:text-base truncate">{group.name}</h4>
-                        <p className="text-xs sm:text-sm text-muted-foreground">{group.members} members</p>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {group.type === "chapter" ? "Chapter" : "Secret Group"}
-                        </Badge>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="consultation" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-              <Card className="p-3 sm:p-4 md:p-6">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="font-semibold text-sm sm:text-base">Consultation Services</h3>
-                  <Badge className="bg-green-100 text-green-800 text-xs">Available</Badge>
-                </div>
-                <p className="text-muted-foreground mb-4 sm:mb-6 text-xs sm:text-sm md:text-base">
-                  Book a consultation session to discuss product strategy, team leadership, or AI implementation.
-                </p>
-
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm sm:text-base">$150/hour</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Rate set by Reward System</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm sm:text-base">30-60 min sessions</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Flexible duration</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm sm:text-base">4.9/5 rating</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Based on 23 sessions</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 sm:space-y-3">
-                    {isOwnProfile ? (
-                      <Button
-                        className="w-full text-xs sm:text-sm"
-                        onClick={() => setActiveTab('about')}
-                      >
-                        <Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                        Edit Profile
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full text-xs sm:text-sm"
-                        onClick={() => setIsBookingModalOpen(true)}
-                      >
-                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                        Book Now
-                      </Button>
-                    )}
-                  </div>
-
-                  {isBookingModalOpen && profileData && (
-                    <BookingModal
-                      expert={{
-                        id: parseInt(id) || 0,
-                        name: profileData.name,
-                        hourly_rate: String((profileData as any).consultationRate || 150)
-                      }}
-                      isOpen={isBookingModalOpen}
-                      onClose={() => setIsBookingModalOpen(false)}
-                      onSuccess={() => {
-                        // Optionally refresh or redirect
-                      }}
-                    />
+                  {userPosts.length > 3 && (
+                    <button className="w-full text-center py-3 text-blue-600 hover:bg-gray-50 rounded-lg font-medium text-sm transition-colors">
+                      Show all activity
+                    </button>
                   )}
                 </div>
-              </Card>
+              )}
+            </Card>
+          </div>
 
-              <Card className="p-3 sm:p-4 md:p-6">
-                <h4 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Expertise Areas</h4>
-                <div className="space-y-2 sm:space-y-3">
-                  {(profileData.expertise && profileData.expertise.length > 0 ? profileData.expertise : [
-                    "Product Strategy & Roadmapping",
-                    "AI/ML Product Development",
-                    "Team Leadership & Management",
-                    "User Research & Analytics",
-                  ]).map((area: string) => (
-                    <div key={area} className="flex items-center space-x-2">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-foreground rounded-full flex-shrink-0"></div>
-                      <span className="text-xs sm:text-sm">{area}</span>
+          {/* Right Column - Sidebar */}
+          <div className="space-y-4">
+            {/* Groups & Chapters Card */}
+            <Card className="p-6 border-0 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Groups</h2>
+                <Badge variant="outline" className="text-xs">{userGroups.length}</Badge>
+              </div>
+              {userGroups.length === 0 ? (
+                <p className="text-sm text-gray-500">No groups joined yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {userGroups.slice(0, 4).map((group) => (
+                    <div key={group.name} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
+                      <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
+                        {group.type === "chapter" ? <Users className="w-5 h-5 text-gray-600" /> : <Lock className="w-5 h-5 text-gray-600" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm text-gray-900 truncate">{group.name}</p>
+                        <p className="text-xs text-gray-500">{group.members} members</p>
+                      </div>
                     </div>
                   ))}
+                  {userGroups.length > 4 && (
+                    <button className="w-full text-center py-2 text-blue-600 hover:bg-gray-50 rounded-lg font-medium text-sm">
+                      Show all {userGroups.length} groups
+                    </button>
+                  )}
                 </div>
+              )}
+            </Card>
+
+            {/* Consultation Card */}
+            {!isOwnProfile && (
+              <Card className="p-6 border-0 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-semibold text-gray-900">Book Consultation</h2>
+                  <Badge className="bg-green-100 text-green-700 border-0">Available</Badge>
+                </div>
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <DollarSign className="w-4 h-4 text-green-600" />
+                    <span>$150/hour</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Clock className="w-4 h-4 text-blue-600" />
+                    <span>30-60 min sessions</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Star className="w-4 h-4 text-amber-500" />
+                    <span>4.9/5 rating</span>
+                  </div>
+                </div>
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  onClick={() => setIsBookingModalOpen(true)}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Book a session
+                </Button>
+
+                {isBookingModalOpen && profileData && (
+                  <BookingModal
+                    expert={{
+                      id: parseInt(id) || 0,
+                      name: profileData.name,
+                      hourly_rate: String((profileData as any).consultationRate || 150)
+                    }}
+                    isOpen={isBookingModalOpen}
+                    onClose={() => setIsBookingModalOpen(false)}
+                    onSuccess={() => {
+                      // Optionally refresh or redirect
+                    }}
+                  />
+                )}
               </Card>
-            </TabsContent>
-          </Tabs>
+            )}
+
+            {/* Expertise Areas - for consultation */}
+            <Card className="p-6 border-0 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Expertise</h2>
+              <div className="space-y-2">
+                {(profileData.expertise && profileData.expertise.length > 0 ? profileData.expertise : [
+                  "Product Strategy",
+                  "AI/ML Development",
+                  "Team Leadership",
+                  "User Research",
+                ]).slice(0, 4).map((area: string) => (
+                  <div key={area} className="flex items-center gap-2 text-sm text-gray-700">
+                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                    {area}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
