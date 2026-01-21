@@ -86,6 +86,10 @@ class DMService {
      * Get or create a conversation between two users
      */
     async getOrCreateConversation(userA: number, userB: number): Promise<string> {
+        if (Number(userA) === Number(userB)) {
+            throw new Error("Cannot create conversation with yourself");
+        }
+
         const [u1, u2] = userA < userB ? [userA, userB] : [userB, userA];
 
         const existing = await pool.query(

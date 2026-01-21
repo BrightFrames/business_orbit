@@ -51,19 +51,7 @@ const nextConfig = {
     ],
   },
 
-  async rewrites() {
-    if (process.env.VERCEL === '1') {
-      return [
-        {
-          source: '/api/:path*',
-          destination: `${process.env.NEXT_PUBLIC_APP_BASE_URL ||
-            'https://api.businessorbit.org'
-            }/api/:path*`,
-        },
-      ]
-    }
-    return []
-  },
+
 }
 
 export default nextConfig

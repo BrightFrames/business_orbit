@@ -112,9 +112,11 @@ export default function MessagesPage() {
             const res = await fetch('/api/messages/conversations', { credentials: 'include' })
             const data = await res.json()
             if (data.success) {
-                setConversations(data.conversations)
+                // Filter out self-conversations (corrupted data)
+                const validConversations = data.conversations.filter((c: Conversation) => String(c.otherUser.id) !== String(user.id));
+                setConversations(validConversations)
                 // Update global navbar unread message count
-                const totalUnread = data.conversations.reduce((sum: number, c: Conversation) => sum + c.unreadCount, 0)
+                const totalUnread = validConversations.reduce((sum: number, c: Conversation) => sum + c.unreadCount, 0)
                 setUnreadMessageCount(totalUnread)
 
                 // If we have a target userId or conversationId from URL, select it
@@ -287,7 +289,14 @@ export default function MessagesPage() {
                 {/* Sidebar */}
                 <Card className="w-80 flex flex-col border-border/50">
                     <div className="p-4 border-b border-border/50">
-                        <h2 className="text-xl font-bold mb-4">Messages</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold">Messages</h2>
+                            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium ${socket?.connected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                }`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${socket?.connected ? 'bg-green-600 animate-pulse' : 'bg-red-600'}`} />
+                                {socket?.connected ? 'Live' : 'Offline'}
+                            </div>
+                        </div>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
