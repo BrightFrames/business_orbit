@@ -46,75 +46,77 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             return;
         }
 
-        // Only connect if not already connected
         if (!socketRef.current) {
-            console.log('Initializing socket connection...');
+            const initializeSocket = async () => {
+                try {
+                    console.log('Fetching auth token for socket...');
+                    // Fetch token from API since we can't read HttpOnly cookies
+                    const res = await fetch('/api/auth/token');
+                    const data = await res.json();
+                    const token = data.token;
 
-            // Extract raw token from cookie for cross-domain auth
-            const getToken = () => {
-                const match = document.cookie.match(new RegExp('(^| )token=([^;]+)'));
-                return match ? match[2] : '';
+                    if (!token) {
+                        console.error('No token found, skipping socket connection');
+                        return;
+                    }
+
+                    console.log('Initializing socket connection with token...');
+                    const s = io(CHAT_WS_URL, {
+                        withCredentials: true,
+                        transports: ['polling', 'websocket'],
+                        autoConnect: true,
+                        reconnection: true,
+                        reconnectionAttempts: 5,
+                        reconnectionDelay: 1000,
+                        auth: {
+                            token: token
+                        }
+                    });
+
+                    s.on('connect', () => {
+                        console.log('Socket connected globally:', s.id);
+                        setIsConnected(true);
+                    });
+
+                    s.on('connect_error', (err) => {
+                        console.error('Socket connection error:', err.message);
+                        setIsConnected(false);
+                    });
+
+                    s.on('disconnect', (reason) => {
+                        console.log('Socket disconnected globally:', reason);
+                        setIsConnected(false);
+                        if (reason === 'io server disconnect') {
+                            s.connect();
+                        }
+                    });
+
+                    s.on('receive_message', (msg: any) => {
+                        console.log('Global socket received message', msg);
+                        fetchUnreadMessageCount();
+                    });
+
+                    s.on('new_notification', (data: any) => {
+                        console.log('Global socket received notification', data);
+                        if (data && data.title && data.message) {
+                            const isMessagesPage = window.location.pathname.startsWith('/product/messages');
+                            if (!document.hidden && !isMessagesPage) {
+                                toast(data.message, {
+                                    icon: '🔔',
+                                    duration: 4000
+                                });
+                            }
+                        }
+                    });
+
+                    socketRef.current = s;
+                    setSocket(s);
+                } catch (e) {
+                    console.error('Failed to initialize socket:', e);
+                }
             };
 
-            const s = io(CHAT_WS_URL, {
-                withCredentials: true,
-                transports: ['polling', 'websocket'],
-                autoConnect: true,
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000,
-                // Explicitly send token (Fix for Vercel->Render cross-domain)
-                auth: {
-                    token: getToken()
-                }
-            });
-
-            s.on('connect', () => {
-                console.log('Socket connected globally:', s.id);
-                setIsConnected(true);
-
-                // Authenticate immediately upon connection
-                // Note: The server should be using cookies, but we can also emit an auth event if needed
-                // It seems the server uses the handshake cookie
-            });
-
-            s.on('connect_error', (err) => {
-                console.error('Socket connection error:', err.message);
-                setIsConnected(false);
-            });
-
-            s.on('disconnect', (reason) => {
-                console.log('Socket disconnected globally:', reason);
-                setIsConnected(false);
-                if (reason === 'io server disconnect') {
-                    // the disconnection was initiated by the server, you need to reconnect manually
-                    s.connect();
-                }
-            });
-
-            // Handle direct message events
-            s.on('receive_message', (msg: any) => {
-                console.log('Global socket received message', msg);
-                fetchUnreadMessageCount();
-            });
-
-            // Handle real-time notifications
-            s.on('new_notification', (data: any) => {
-                console.log('Global socket received notification', data);
-                if (data && data.title && data.message) {
-                    // Avoid showing toast if we are already on the messages page
-                    const isMessagesPage = window.location.pathname.startsWith('/product/messages');
-                    if (!document.hidden && !isMessagesPage) {
-                        toast(data.message, {
-                            icon: '🔔',
-                            duration: 4000
-                        });
-                    }
-                }
-            });
-
-            socketRef.current = s;
-            setSocket(s);
+            initializeSocket();
         }
 
         // Cleanup on unmount or user change
