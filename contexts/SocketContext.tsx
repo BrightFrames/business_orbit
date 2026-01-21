@@ -69,7 +69,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             });
 
             // Handle direct message events
-            s.on('dm:message', (msg: any) => {
+            s.on('receive_message', (msg: any) => {
                 console.log('Global socket received message', msg);
                 fetchUnreadMessageCount();
 

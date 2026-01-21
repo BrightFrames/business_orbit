@@ -98,10 +98,10 @@ export default function MessagesPage() {
             refreshConversations()
         }
 
-        socket.on('dm:message', handleNewMessage)
+        socket.on('receive_message', handleNewMessage)
 
         return () => {
-            socket.off('dm:message', handleNewMessage)
+            socket.off('receive_message', handleNewMessage)
         }
     }, [socket, user, activeConversation?.id])
 
@@ -191,7 +191,7 @@ export default function MessagesPage() {
                 recipientId: String(activeConversation.otherUser.id)
             }
 
-            socket.emit('dm:send', payload, (ack: any) => {
+            socket.emit('send_message', payload, (ack: any) => {
                 if (ack?.ok) {
                     setMessages(prev => prev.map(m => m.id === tempMsg.id ? ack.message : m))
                     refreshConversations()

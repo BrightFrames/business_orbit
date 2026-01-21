@@ -324,12 +324,12 @@ io.on('connection', async (socket) => {
   // STEP 4 & 5 & 6: DIRECT MESSAGE & NOTIFICATIONS
   // ----------------------------------------------------------------------
 
-  // NO dm:join EVENT NEEDED -> Handled by Auth Middleware
+  // Simple in-memory rate limiter: Map<userId, timestamp[]>
+  const rateLimitMap = new Map<string, number[]>();
 
-  socket.on('dm:send', async (payload: { conversationId: string; content: string; recipientId: string }, ack?: (res: { ok: boolean; message?: any; error?: string }) => void) => {
+  socket.on('send_message', async (payload: { conversationId: string; content: string; recipientId: string }, ack?: (res: { ok: boolean; message?: any; error?: string }) => void) => {
     try {
       const { conversationId, content, recipientId } = payload;
-      // AUTH CHECK: Ensure sender is the authenticated socket user
       const senderId = userId;
 
       if (!conversationId || !content || !recipientId) {
@@ -337,22 +337,33 @@ io.on('connection', async (socket) => {
         return;
       }
 
-      // 1. Persist Message (Step 4.3) include Notification Record creation (Step 4.5 handled in service)
+      // RATE LIMIT CHECK
+      const now = Date.now();
+      const timestamps = rateLimitMap.get(senderId) || [];
+      // Filter out timestamps older than 1 minute
+      const recentTimestamps = timestamps.filter(t => now - t < 60000);
+
+      if (recentTimestamps.length >= 30) { // Max 30 messages per minute
+        ack?.({ ok: false, error: 'Rate limit exceeded. Please wait.' });
+        return;
+      }
+
+      recentTimestamps.push(now);
+      rateLimitMap.set(senderId, recentTimestamps);
+
+      // 1. Persist Message (Step 4.3) include Notification Record creation
       const saved = await dmService.storeMessage(conversationId, Number(senderId), content);
 
-      // 2. Emit to Receiver (Step 4.4)
+      // 2. Emit to Receiver (Step 4.4) - Event Name: receive_message
       const recipientRoom = `user-${recipientId}`;
-      io.to(recipientRoom).emit('dm:message', saved);
+      io.to(recipientRoom).emit('receive_message', saved);
 
       // 3. Emit Real-time Notification (Step 6)
-      // We need to construct any specific payload for notification if needed, 
-      // or just trust the client to interpret dm:message as a trigger if they are not on the chat page.
-      // But per request: "Emit notification event to receiver".
       const notificationPayload = {
         type: 'message',
         sourceId: saved.id,
         title: 'New Message',
-        message: 'You have a new message', // Logic to get sender name could be here or just generic
+        message: 'You have a new message',
         link: `/product/messages?conversationId=${conversationId}`
       };
 
@@ -360,11 +371,11 @@ io.on('connection', async (socket) => {
 
       // 4. Sync sender's other tabs
       const senderRoom = `user-${senderId}`;
-      socket.to(senderRoom).emit('dm:message', saved);
+      socket.to(senderRoom).emit('receive_message', saved);
 
       ack?.({ ok: true, message: saved });
     } catch (e) {
-      console.error('dm:send error', e);
+      console.error('send_message error', e);
       ack?.({ ok: false, error: 'failed to send message' });
     }
   });
