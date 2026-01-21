@@ -633,8 +633,9 @@ function SimpleList({ items, emptyText }: { items: { id: string | number, title:
 }
 
 function RedirectToLogin() {
+  const router = useRouter();
   useEffect(() => {
-    window.location.href = '/product/auth'
+    router.push('/product/auth')
   }, [])
 
   return (

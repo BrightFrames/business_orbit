@@ -145,9 +145,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } else {
         // Fallback or Handle 401
+        console.log('[Auth] Bootstrap failed or no user, handling unauthenticated');
         handleUnauthenticated();
       }
     } catch (error) {
+      console.log('[Auth] Bootstrap error:', error);
       handleUnauthenticated();
     } finally {
       setLoading(false);

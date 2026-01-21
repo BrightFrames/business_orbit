@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import toast from 'react-hot-toast';
@@ -25,6 +26,7 @@ export default function AuthenticationPage() {
     const [mode, setMode] = useState<'signin' | 'signup'>('signin');
     const [authType, setAuthType] = useState<'user' | 'admin'>('user');
     const { user, loading, onboardingCompleted, inviteSent, isNewUser, isAdmin } = useAuth();
+    const router = useRouter();
 
     useEffect(() => {
         // Check for OAuth errors in URL parameters
@@ -83,22 +85,22 @@ export default function AuthenticationPage() {
             // User is authenticated, determine where to redirect based on user type
             if (isAdmin) {
                 // Admin user: go to product admin panel (not /admin)
-                window.location.href = '/product/admin';
+                router.push('/product/admin');
             } else if (isNewUser) {
                 // New regular user: follow full flow
                 if (!inviteSent) {
-                    window.location.href = '/product/invite';
+                    router.push('/product/invite');
                 } else if (!onboardingCompleted) {
-                    window.location.href = '/product/onboarding';
+                    router.push('/product/onboarding');
                 } else {
-                    window.location.href = '/product/subscription';
+                    router.push('/product/subscription');
                 }
             } else {
                 // Existing regular user: go directly to profile page per requirement
-                window.location.href = '/product/profile';
+                router.push('/product/profile');
             }
         }
-    }, [user, loading, onboardingCompleted, inviteSent, isNewUser, isAdmin]);
+    }, [user, loading, onboardingCompleted, inviteSent, isNewUser, isAdmin, router]);
 
     if (loading) {
         return (

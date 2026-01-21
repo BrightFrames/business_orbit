@@ -64,46 +64,47 @@ export default function MessagesPage() {
     }, [messages])
 
     // Listen for incoming messages on the global socket
+    // Listen for incoming messages on the global socket
     useEffect(() => {
         if (!socket || !user) return
 
         const handleNewMessage = (msg: Message) => {
-            // If message is for active conversation, add to list
-            if (activeConversation && msg.conversationId === activeConversation.id) {
-                setMessages(prev => {
-                    // Avoid duplicates if any
-                    if (prev.some(m => m.id === msg.id)) return prev
-                    return [...prev, msg]
-                })
-                // Mark as read immediately if looking at it
-                socket.emit('dm:read', { conversationId: activeConversation.id, userId: String(user.id) })
-            } else {
-                // If message is NOT for active conversation, show a toast
-                // We need to fetch the sender name if not in payload, but usually it might be payload or we rely on generic
-                // The msg object actually has senderId. To show name we might need to look it up or rely on msg having it.
-                // The msg interface defines senderId, content. It doesn't seem to have senderName.
-                // However, chat-server emits 'saved' which comes from dmService.storeMessage.
-                // dmService.storeMessage returns DirectMessage interface which has id, conversationId, senderId, content, createdAt.
-                // It DOES NOT have senderName.
-                // So we can check the conversations list to find the name of the sender? 
-                // Or we can just say "New message received".
+            console.log("MessagesPage received message:", msg);
 
-                toast.success("New message received", {
-                    icon: '💬',
-                    position: 'top-right'
-                })
+            // Check if this message belongs to the currently active conversation
+            if (activeConversation && (
+                msg.conversationId === activeConversation.id ||
+                msg.senderId === String(activeConversation.otherUser.id)
+            )) {
+                console.log("Message belongs to active conversation, adding to list");
+                setMessages(prev => {
+                    // Avoid duplicates
+                    if (prev.some(m => m.id === msg.id)) return prev;
+                    return [...prev, msg];
+                });
+
+                // Scroll to bottom
+                setTimeout(() => {
+                    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                }, 100);
+
+                // Mark as read immediately since we are viewing it
+                socket.emit('dm:read', { conversationId: msg.conversationId, userId: String(user.id) });
+            } else {
+                console.log("Message does NOT belong to active conversation");
+                toast.success("New message received", { icon: '💬' });
             }
 
-            // Update conversations list for preview
-            refreshConversations()
+            // Always refresh conversations to update previews and unread counts
+            refreshConversations();
         }
 
-        socket.on('receive_message', handleNewMessage)
+        socket.on('receive_message', handleNewMessage);
 
         return () => {
-            socket.off('receive_message', handleNewMessage)
+            socket.off('receive_message', handleNewMessage);
         }
-    }, [socket, user, activeConversation?.id])
+    }, [socket, user, activeConversation]); // Re-bind when activeConversation changes to capture correct ID
 
     // Fetch Conversations
     const refreshConversations = async () => {
