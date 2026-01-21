@@ -146,9 +146,13 @@ const io = new Server(server, {
 })
 
 // Add error handling for database connection
-pool.on('error', (err: any) => {
-  console.error('Database pool error:', err)
-})
+if (pool) {
+  pool.on('error', (err: any) => {
+    console.error('Database pool error:', err)
+  })
+} else {
+  console.error('Database pool is not initialized. Check DATABASE_URL or if build-time detection is triggered.')
+}
 
 type Session = { userId: string; chapterId: string }
 const socketSession: Record<string, { userId: string | number; chapterId: string; isAdmin?: boolean }> = {}
