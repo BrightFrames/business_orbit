@@ -8,16 +8,19 @@ export function middleware(request: NextRequest) {
   if (pathname.startsWith('/product') || pathname.startsWith('/profile')) {
     const token = request.cookies.get('token')?.value;
     // Public marketing routes under /product (do NOT require auth)
-    const publicProductPaths = ['/product', '/product/', '/product/auth'];
-    const isPublic = publicProductPaths.some((p) => pathname.startsWith(p));
+    // Use exact match for /product and /product/, but startsWith for /product/auth
+    const isPublic =
+      pathname === '/product' ||
+      pathname === '/product/' ||
+      pathname.startsWith('/product/auth');
+
 
     // Admin routes are protected by the admin page component itself
     // No middleware redirect needed - let the page handle authentication
 
-    // If already logged in and visiting the auth page, redirect to profile
-    if (pathname === '/product/auth' && token) {
-      return NextResponse.redirect(new URL('/product/profile', request.url));
-    }
+    // NOTE: We do NOT redirect from /product/auth to /product/profile here even if token exists
+    // because the token might be invalid/expired. The auth page component handles this
+    // client-side after validating the token via /api/bootstrap.
 
     if (!isPublic && !token) {
       const url = new URL('/product/auth', request.url);

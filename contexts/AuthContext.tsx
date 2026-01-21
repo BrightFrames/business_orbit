@@ -154,20 +154,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const handleUnauthenticated = () => {
+  const handleUnauthenticated = async () => {
     setUser(null);
     setOnboardingCompleted(false);
     setInviteSent(false);
     setNotifications([]);
     setUnreadCount(0);
     setUnreadMessageCount(0);
-    clearTokenCookie();
+
+    // Clear the httpOnly cookie via API (document.cookie can't clear httpOnly cookies)
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      console.error('Failed to clear auth cookie', e);
+    }
 
     if (typeof window !== 'undefined') {
       const path = window.location.pathname || '';
-      const publicProductPaths = ['/product', '/product/', '/product/auth'];
       const isProduct = path.startsWith('/product');
-      const isPublic = publicProductPaths.some(p => path.startsWith(p));
+      // Use exact match for /product and /product/, but startsWith for /product/auth
+      const isPublic =
+        path === '/product' ||
+        path === '/product/' ||
+        path.startsWith('/product/auth');
       if (isProduct && !isPublic) {
         window.location.href = '/product/auth';
       }
