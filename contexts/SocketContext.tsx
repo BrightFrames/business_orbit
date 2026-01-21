@@ -50,6 +50,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         if (!socketRef.current) {
             console.log('Initializing socket connection...');
 
+            // Extract raw token from cookie for cross-domain auth
+            const getToken = () => {
+                const match = document.cookie.match(new RegExp('(^| )token=([^;]+)'));
+                return match ? match[2] : '';
+            };
+
             const s = io(CHAT_WS_URL, {
                 withCredentials: true,
                 transports: ['polling', 'websocket'],
@@ -57,6 +63,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
                 reconnection: true,
                 reconnectionAttempts: 5,
                 reconnectionDelay: 1000,
+                // Explicitly send token (Fix for Vercel->Render cross-domain)
+                auth: {
+                    token: getToken()
+                }
             });
 
             s.on('connect', () => {
