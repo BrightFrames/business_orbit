@@ -187,7 +187,6 @@ export default function MessagesPage() {
         if (socket?.connected) {
             const payload = {
                 conversationId: activeConversation.id,
-                senderId: String(user.id),
                 content: messageContent,
                 recipientId: String(activeConversation.otherUser.id)
             }

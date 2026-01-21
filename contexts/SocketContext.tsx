@@ -55,8 +55,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             s.on('connect', () => {
                 console.log('Socket connected globally:', s.id);
                 setIsConnected(true);
-                // Join the user's private room
-                s.emit('dm:join', { userId: String(user.id) });
+            });
+
+            s.on('connect_error', (err) => {
+                console.error('Socket connection error:', err.message);
+                // Automatically retries, but we could handle specific errors (e.g., auth failure)
+                setIsConnected(false);
             });
 
             s.on('disconnect', () => {
@@ -64,24 +68,31 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
                 setIsConnected(false);
             });
 
+            // Handle direct message events
             s.on('dm:message', (msg: any) => {
                 console.log('Global socket received message', msg);
-
-                // Refresh unread count in AuthContext
                 fetchUnreadMessageCount();
 
-                // Show notification if NOT on the messages page
-                // Or if on messages page but maybe not looking at this conversation (handled by page logic usually, but here we can be simple)
-                if (!pathname?.startsWith('/product/messages')) {
-                    // Play sound or show toast
-                    const senderName = msg.senderName || 'Someone'; // The message object might need senderName
-                    toast(`${senderName} sent you a message`, {
-                        icon: '💬',
-                        duration: 4000
-                    });
-                }
+                // Additional UI logic if needed
             });
 
+            // Handle real-time notifications
+            s.on('new_notification', (data: any) => {
+                console.log('Global socket received notification', data);
+
+                // Show toast if proper data
+                if (data && data.title && data.message) {
+                    // Only show if we are NOT on the messages page for this conversation
+                    // But notifications might be broader than just messages.
+                    // For now, let's show simple notification.
+                    if (!document.hidden && !pathname?.startsWith('/product/messages')) {
+                        toast(data.message, {
+                            icon: '🔔',
+                            duration: 4000
+                        });
+                    }
+                }
+            });
             setSocket(s);
 
             return () => {
@@ -89,13 +100,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             };
         }
     }, [user, CHAT_WS_URL]);
-
-    // Handle re-joining if socket exists but user changed (rare without unmount) or just to ensure room join
-    useEffect(() => {
-        if (socket && user && isConnected) {
-            socket.emit('dm:join', { userId: String(user.id) });
-        }
-    }, [socket, user, isConnected]);
 
     return (
         <SocketContext.Provider value={{ socket, isConnected }}>
