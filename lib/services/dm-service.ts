@@ -30,6 +30,61 @@ class DMService {
     /**
      * Get or create a conversation between two users
      */
+    async getConversation(conversationId: string, userId: number): Promise<Conversation | null> {
+        const query = `
+      SELECT 
+        c.id,
+        c.last_message_at as "updatedAt",
+        CASE WHEN c.user1_id = $2 THEN c.user2_id ELSE c.user1_id END as "otherUserId",
+        u.name as "otherUserName",
+        u.profile_photo_url as "otherUserProfilePhoto",
+        dm.content as "lastMessageContent",
+        dm.created_at as "lastMessageCreatedAt",
+        dm.sender_id as "lastMessageSenderId",
+        (
+          SELECT COUNT(*)::int 
+          FROM direct_messages 
+          WHERE conversation_id = c.id 
+          AND sender_id != $2 
+          AND read_at IS NULL
+        ) as "unreadCount"
+      FROM conversations c
+      JOIN users u ON (CASE WHEN c.user1_id = $2 THEN c.user2_id ELSE c.user1_id END) = u.id
+      LEFT JOIN LATERAL (
+        SELECT content, created_at, sender_id
+        FROM direct_messages
+        WHERE conversation_id = c.id
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) dm ON true
+      WHERE c.id = $1 AND (c.user1_id = $2 OR c.user2_id = $2)
+    `;
+
+        const res = await pool.query(query, [conversationId, userId]);
+
+        if (res.rows.length === 0) return null;
+
+        const row = res.rows[0];
+        return {
+            id: row.id,
+            otherUser: {
+                id: row.otherUserId,
+                name: row.otherUserName,
+                profilePhotoUrl: row.otherUserProfilePhoto
+            },
+            lastMessage: row.lastMessageContent ? {
+                content: decompressMessage(row.lastMessageContent),
+                createdAt: row.lastMessageCreatedAt.toISOString(),
+                senderId: row.lastMessageSenderId.toString()
+            } : undefined,
+            unreadCount: row.unreadCount,
+            updatedAt: row.updatedAt.toISOString()
+        };
+    }
+
+    /**
+     * Get or create a conversation between two users
+     */
     async getOrCreateConversation(userA: number, userB: number): Promise<string> {
         const [u1, u2] = userA < userB ? [userA, userB] : [userB, userA];
 

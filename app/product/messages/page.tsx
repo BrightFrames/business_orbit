@@ -107,7 +107,7 @@ export default function MessagesPage() {
     }, [socket, user, activeConversation]); // Re-bind when activeConversation changes to capture correct ID
 
     // Fetch Conversations
-    const refreshConversations = async () => {
+    const refreshConversations = async (targetUserId?: string) => {
         try {
             const res = await fetch('/api/messages/conversations', { credentials: 'include' })
             const data = await res.json()
@@ -116,6 +116,39 @@ export default function MessagesPage() {
                 // Update global navbar unread message count
                 const totalUnread = data.conversations.reduce((sum: number, c: Conversation) => sum + c.unreadCount, 0)
                 setUnreadMessageCount(totalUnread)
+
+                // If we have a target userId or conversationId from URL, select it
+                const params = new URLSearchParams(window.location.search);
+                const queryUserId = targetUserId || params.get('userId');
+                const queryConvId = params.get('conversationId');
+
+                if (queryConvId) {
+                    const found = data.conversations.find((c: Conversation) => c.id === queryConvId);
+                    if (found) {
+                        setActiveConversation(found);
+                    } else {
+                        // Not in the list (maybe old or just created), try fetching it specifically
+                        try {
+                            const singleRes = await fetch(`/api/messages/${queryConvId}`, { credentials: 'include' });
+                            const singleData = await singleRes.json();
+                            if (singleData.success && singleData.conversation) {
+                                // Add to list and set active
+                                setConversations(prev => {
+                                    if (prev.find(c => c.id === singleData.conversation.id)) return prev;
+                                    return [singleData.conversation, ...prev];
+                                });
+                                setActiveConversation(singleData.conversation);
+                            }
+                        } catch (err) {
+                            console.error("Failed to fetch single conversation", err);
+                        }
+                    }
+                } else if (queryUserId) {
+                    const found = data.conversations.find((c: Conversation) => String(c.otherUser.id) === queryUserId);
+                    if (found) {
+                        setActiveConversation(found);
+                    }
+                }
             }
         } catch (e) {
             console.error('Fetch conversations error', e)

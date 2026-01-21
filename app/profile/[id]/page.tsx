@@ -387,6 +387,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                       className="rounded-full"
                       onClick={async () => {
                         try {
+                          // Try to create/get conversation first
                           const res = await fetch('/api/messages/start', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -394,12 +395,16 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                             credentials: 'include'
                           });
                           const data = await res.json();
+
                           if (data.success) {
-                            window.location.href = '/product/messages';
+                            // If successful, we have a conversationId or we know it exists.
+                            // We can pass userId just in case to help find it.
+                            router.push(`/product/messages?userId=${id}&conversationId=${data.conversationId || ''}`);
                           } else {
                             toast.error('Failed to start conversation');
                           }
                         } catch (e) {
+                          console.error(e);
                           toast.error('Error starting conversation');
                         }
                       }}
