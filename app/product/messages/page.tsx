@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/contexts/AuthContext"
+import toast from "react-hot-toast"
 import { Navigation } from "@/components/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Search, Send, MoreVertical, Phone, Video, Info, User, Loader2, MessageSquare } from "lucide-react"
 import { io, Socket } from "socket.io-client"
 import { format } from "date-fns"
+import { useSocket } from "@/contexts/SocketContext"
 
 interface Conversation {
     id: string;
@@ -46,11 +48,8 @@ export default function MessagesPage() {
     const [loadingMessages, setLoadingMessages] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
 
-    const socketRef = useRef<Socket | null>(null)
+    const { socket } = useSocket()
     const messagesEndRef = useRef<HTMLDivElement>(null)
-
-    const CHAT_HTTP_URL = process.env.NEXT_PUBLIC_CHAT_SOCKET_URL || 'http://localhost:4000'
-    const CHAT_WS_URL = CHAT_HTTP_URL.replace(/^http/, 'ws')
 
     // Auth Redirect
     useEffect(() => {
@@ -64,36 +63,47 @@ export default function MessagesPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, [messages])
 
-    // Initialize Socket
+    // Listen for incoming messages on the global socket
     useEffect(() => {
-        if (!user) return
+        if (!socket || !user) return
 
-        const s = io(CHAT_WS_URL, {
-            withCredentials: true,
-            transports: ['polling', 'websocket']
-        })
-        socketRef.current = s
-
-        s.on('connect', () => {
-            s.emit('dm:join', { userId: String(user.id) })
-        })
-
-        s.on('dm:message', (msg: Message) => {
+        const handleNewMessage = (msg: Message) => {
             // If message is for active conversation, add to list
             if (activeConversation && msg.conversationId === activeConversation.id) {
-                setMessages(prev => [...prev, msg])
-                // Mark as read
-                s.emit('dm:read', { conversationId: activeConversation.id, userId: String(user.id) })
+                setMessages(prev => {
+                    // Avoid duplicates if any
+                    if (prev.some(m => m.id === msg.id)) return prev
+                    return [...prev, msg]
+                })
+                // Mark as read immediately if looking at it
+                socket.emit('dm:read', { conversationId: activeConversation.id, userId: String(user.id) })
+            } else {
+                // If message is NOT for active conversation, show a toast
+                // We need to fetch the sender name if not in payload, but usually it might be payload or we rely on generic
+                // The msg object actually has senderId. To show name we might need to look it up or rely on msg having it.
+                // The msg interface defines senderId, content. It doesn't seem to have senderName.
+                // However, chat-server emits 'saved' which comes from dmService.storeMessage.
+                // dmService.storeMessage returns DirectMessage interface which has id, conversationId, senderId, content, createdAt.
+                // It DOES NOT have senderName.
+                // So we can check the conversations list to find the name of the sender? 
+                // Or we can just say "New message received".
+
+                toast.success("New message received", {
+                    icon: '💬',
+                    position: 'top-right'
+                })
             }
 
             // Update conversations list for preview
             refreshConversations()
-        })
+        }
+
+        socket.on('dm:message', handleNewMessage)
 
         return () => {
-            s.disconnect()
+            socket.off('dm:message', handleNewMessage)
         }
-    }, [user, activeConversation?.id])
+    }, [socket, user, activeConversation?.id])
 
     // Fetch Conversations
     const refreshConversations = async () => {
@@ -162,7 +172,7 @@ export default function MessagesPage() {
 
         // Mark messages as read when replying (since user has clearly seen them)
         if (activeConversation.unreadCount > 0) {
-            socketRef.current?.emit('dm:read', { conversationId: activeConversation.id, userId: String(user.id) })
+            socket?.emit('dm:read', { conversationId: activeConversation.id, userId: String(user.id) })
             // Update the navbar unread count
             setUnreadMessageCount(prev => Math.max(0, prev - activeConversation.unreadCount))
             // Update local conversation to show 0 unread
@@ -174,7 +184,7 @@ export default function MessagesPage() {
         }
 
         // Try Socket.IO first, fallback to HTTP API
-        if (socketRef.current?.connected) {
+        if (socket?.connected) {
             const payload = {
                 conversationId: activeConversation.id,
                 senderId: String(user.id),
@@ -182,7 +192,7 @@ export default function MessagesPage() {
                 recipientId: String(activeConversation.otherUser.id)
             }
 
-            socketRef.current.emit('dm:send', payload, (ack: any) => {
+            socket.emit('dm:send', payload, (ack: any) => {
                 if (ack?.ok) {
                     setMessages(prev => prev.map(m => m.id === tempMsg.id ? ack.message : m))
                     refreshConversations()

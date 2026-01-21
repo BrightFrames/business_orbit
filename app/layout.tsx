@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/AuthContext"
+import { SocketProvider } from "@/contexts/SocketContext"
 import { Toaster } from "react-hot-toast"
 import { Phase2Improvements } from "@/components/Phase2Improvements"
 
@@ -27,9 +28,11 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="font-sans antialiased">
         <AuthProvider>
-          {children}
-          <Toaster position="top-right" />
-          <Phase2Improvements />
+          <SocketProvider>
+            {children}
+            <Toaster position="top-right" />
+            <Phase2Improvements />
+          </SocketProvider>
         </AuthProvider>
       </body>
     </html>
