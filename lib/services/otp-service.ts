@@ -24,7 +24,7 @@ const RATE_LIMIT_MAX_REQUESTS = 3; // Max OTP requests per window
 const RATE_LIMIT_WINDOW_MINUTES = 60; // 1 hour window
 const BLOCK_DURATION_MINUTES = 30; // Block for 30 minutes after abuse
 
-export type OTPPurpose = 'verify_email' | 'forgot_password' | 'sensitive_action';
+export type OTPPurpose = 'verify_email' | 'forgot_password' | 'sensitive_action' | 'signup_verification';
 
 interface RateLimitResult {
     allowed: boolean;

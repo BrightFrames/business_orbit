@@ -8,6 +8,9 @@ export interface DirectMessage {
     content: string;
     createdAt: string;
     readAt: string | null;
+    messageType?: 'text' | 'audio' | 'image' | 'video';
+    mediaUrl?: string;
+    metadata?: any;
 }
 
 export interface Conversation {
@@ -165,11 +168,23 @@ class DMService {
     /**
      * Get message history for a conversation
      */
+    /**
+     * Get message history for a conversation
+     */
     async getMessages(conversationId: string, limit: number = 50, cursor?: string): Promise<{ messages: DirectMessage[], hasMore: boolean }> {
         let query = `
-      SELECT id, conversation_id as "conversationId", sender_id as "senderId", content, created_at as "createdAt", read_at as "readAt"
+      SELECT 
+        id, 
+        conversation_id as "conversationId", 
+        sender_id as "senderId", 
+        content, 
+        message_type as "messageType",
+        media_url as "mediaUrl",
+        metadata,
+        created_at as "createdAt", 
+        read_at as "readAt"
       FROM direct_messages
-      WHERE conversation_id = $1
+      WHERE conversation_id = $1 AND is_archived = FALSE
     `;
         const params: any[] = [conversationId];
 
@@ -187,7 +202,10 @@ class DMService {
             senderId: row.senderId.toString(),
             content: decompressMessage(row.content),
             createdAt: row.createdAt.toISOString(),
-            readAt: row.readAt ? row.readAt.toISOString() : null
+            readAt: row.readAt ? row.readAt.toISOString() : null,
+            messageType: row.messageType || 'text',
+            mediaUrl: row.mediaUrl,
+            metadata: row.metadata || {}
         }));
 
         const hasMore = messages.length > limit;
@@ -202,20 +220,31 @@ class DMService {
     /**
      * Store a new direct message
      */
-    async storeMessage(conversationId: string, senderId: number, content: string): Promise<DirectMessage> {
+    async storeMessage(
+        conversationId: string,
+        senderId: number,
+        content: string,
+        type: 'text' | 'audio' | 'image' | 'video' = 'text',
+        mediaUrl?: string,
+        metadata: any = {}
+    ): Promise<DirectMessage> {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
 
-            // Compress the message content before storing
-            const compressedContent = compressMessage(content);
+            // Compress the message content before storing (only if text is huge, but util handles it)
+            const compressedContent = compressMessage(content || '');
 
             const res = await client.query(
-                `INSERT INTO direct_messages (conversation_id, sender_id, content)
-         VALUES ($1, $2, $3)
+                `INSERT INTO direct_messages (conversation_id, sender_id, content, message_type, media_url, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, created_at`,
-                [conversationId, senderId, compressedContent]
+                [conversationId, senderId, compressedContent, type, mediaUrl, metadata]
             );
+
+            // Update conversation last_message snippet (text only for snippet)
+            // If audio/image, we show a placeholder text
+            const snippet = type === 'text' ? content : `[${type}]`;
 
             await client.query(
                 'UPDATE conversations SET last_message_at = $1 WHERE id = $2',
@@ -236,13 +265,16 @@ class DMService {
                 const senderRes = await client.query('SELECT name FROM users WHERE id = $1', [senderId]);
                 const senderName = senderRes.rows[0]?.name || 'Someone';
 
+                const notifMsg = type === 'text' ? 'sent you a message' : `sent a ${type} message`;
+
                 await client.query(
-                    `INSERT INTO notifications (user_id, type, title, message, link)
-                     VALUES ($1, 'message', 'New Message', $2, $3)`,
+                    `INSERT INTO notifications (user_id, type, title, message, link, metadata)
+                     VALUES ($1, 'message', 'New Message', $2, $3, $4)`,
                     [
                         recipientId,
-                        `${senderName} sent you a message`,
-                        `/product/messages?conversationId=${conversationId}`
+                        `${senderName} ${notifMsg}`,
+                        `/product/messages?conversationId=${conversationId}`,
+                        { senderId, type }
                     ]
                 );
             }
@@ -256,7 +288,11 @@ class DMService {
                 senderId: senderId.toString(),
                 content,
                 createdAt: row.created_at.toISOString(),
-                readAt: null
+                readAt: null,
+                // @ts-ignore - Extension for frontend interface if needed
+                messageType: type,
+                mediaUrl,
+                metadata
             };
         } catch (e) {
             await client.query('ROLLBACK');

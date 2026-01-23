@@ -56,11 +56,9 @@ const pool = global.__PG_POOL__ ?? (
     connectionString: databaseUrl,
     // Only use SSL if explicitly required by URL (cloud providers) or if production AND NOT local
     ssl: shouldUseSsl || (process.env.NODE_ENV === 'production' && !isLocalDb) ? { rejectUnauthorized: false } : false,
-    // Supabase has connection limits, so we adjust based on environment
-    // Increased dev limit to 10 to prevent timeouts with parallel requests
-    max: databaseUrl.includes('supabase')
-      ? (process.env.NODE_ENV === 'production' ? 2 : 2)
-      : (process.env.NODE_ENV === 'production' ? 2 : 2),
+    // Increased dev/prod limit to 10 to allow parallel queries (Bootstrap uses 4 alone)
+    max: 10,
+    application_name: 'business_orbit',
     min: 0,
     idleTimeoutMillis: 60_000,
     connectionTimeoutMillis: 60_000, // Increased from 30s to 60s

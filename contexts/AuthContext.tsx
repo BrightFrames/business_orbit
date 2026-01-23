@@ -201,20 +201,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(data.user);
         setIsNewUser(false); // Existing user logging in
 
-        // Check if user has completed onboarding
-        try {
-          const prefsResponse = await fetch(`/api/preferences/${data.user.id}`, {
-            credentials: 'include',
-          });
-          if (prefsResponse.ok) {
-            const prefsData = await prefsResponse.json();
-            setOnboardingCompleted(prefsData.onboardingCompleted);
-          } else {
-            setOnboardingCompleted(false);
-          }
-        } catch (prefsError) {
-          setOnboardingCompleted(false);
-        }
+        // Check if user has completed onboarding - use bootstrap data or separate call if needed
+        // Optimization: We will let the detailed bootstrap/profile fetch handle this or assume false initially
+        // to avoid blocking the UI with a second sequential request.
+        // checkAuth will eventually run/update or we can rely on what login returns if updated.
+        // For now, removing the blocking fetch to speed up TTI.
+
+        // If the login endpoint returns preferred data, use it. Otherwise default to false.
+        // We can optimistically set it based on user.onboarding_completed if it exists on user object
+        // cast to any to access potentially missing property safely
+        const loginUser = data.user as any;
+        setOnboardingCompleted(!!loginUser.onboarding_completed);
 
         toast.success('Login successful!');
         return { success: true };

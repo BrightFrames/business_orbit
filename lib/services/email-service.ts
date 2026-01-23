@@ -179,7 +179,7 @@ export async function sendOTPEmail(
     email: string,
     userName: string,
     otp: string,
-    purpose: 'verify_email' | 'forgot_password' | 'sensitive_action',
+    purpose: 'verify_email' | 'forgot_password' | 'sensitive_action' | 'signup_verification',
     expiryMinutes: number = 10
 ): Promise<EmailResult> {
     const template = otpEmailTemplate(userName, otp, purpose, expiryMinutes);

@@ -102,46 +102,66 @@ export default function GroupDetailsPage() {
       })()
   }, [params?.id, user?.id])
 
-  // Connect websocket (optional)
+  // Connect websocket
   useEffect(() => {
     if (!params?.id || !user?.id) return
 
-    const init = async () => {
-      try {
-        const health = await fetch(`${GROUP_CHAT_HTTP_URL}/health`, { method: 'GET', signal: AbortSignal.timeout(3000) })
-        if (!health.ok) { setConnecting(false); return }
-      } catch { setConnecting(false); return }
-
-      if (!socketRef.current) {
-        const s = io(GROUP_CHAT_WS_URL, { autoConnect: true, withCredentials: true, timeout: 5000, reconnection: false, transports: ['polling', 'websocket'], upgrade: true, rememberUpgrade: true })
-        socketRef.current = s
-        s.off('connect').on('connect', () => {
-          setConnecting(false)
-          s.emit('group:join', { groupId: String(params.id), userId: String(user.id) }, (ack?: { ok: boolean; error?: string }) => {
-            if (!ack?.ok) { console.error('group join failed', ack?.error) }
-          })
-        })
-        s.off('group:newMessage').on('group:newMessage', (msg: GroupMessage) => {
-          if (String(msg.groupId) === String(params.id)) {
-            setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg])
-          }
-        })
-        s.off('disconnect').on('disconnect', () => setConnecting(true))
-        s.off('connect_error').on('connect_error', () => { setConnecting(false) })
-      }
+    // Clean up any existing listeners/socket if params change
+    if (socketRef.current) {
+      socketRef.current.removeAllListeners('group:newMessage');
     }
-    init()
+
+    const s = socketRef.current || io(GROUP_CHAT_WS_URL, {
+      autoConnect: true,
+      withCredentials: true,
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5
+    });
+
+    socketRef.current = s;
+
+    const handleConnect = () => {
+      setConnecting(false);
+      // Explicitly join this group room just in case (redundancy)
+      s.emit('group:join', { groupId: String(params.id) }, (ack?: { ok: boolean; error?: string }) => {
+        if (!ack?.ok) console.error('Group join failed:', ack?.error);
+      });
+    };
+
+    const handleNewMessage = (msg: GroupMessage) => {
+      // Strict groupId check to prevent leakage
+      if (String(msg.groupId) === String(params.id)) {
+        setMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
+    };
+
+    const handleDisconnect = () => setConnecting(true);
+
+    s.on('connect', handleConnect);
+    s.on('group:newMessage', handleNewMessage);
+    s.on('disconnect', handleDisconnect);
+
+    // If already connected, join immediately
+    if (s.connected) {
+      handleConnect();
+    }
 
     return () => {
-      const s = socketRef.current
-      if (s) {
-        s.off('group:newMessage')
-        s.off('connect')
-        s.off('disconnect')
-        s.off('connect_error')
-      }
-    }
-  }, [params?.id, user?.id])
+      s.off('connect', handleConnect);
+      s.off('group:newMessage', handleNewMessage);
+      s.off('disconnect', handleDisconnect);
+      // Only disconnect if we are navigating away from the group page entirely
+      // But since we are inside a component, we might want to keep the socket alive if the user goes back to list.
+      // However, for this page logic, standard behavior is to disconnect or let the global provider handle it.
+      // Since this page creates its ONE-OFF socket, we MUST disconnect it to prevent leaks.
+      s.disconnect();
+      socketRef.current = null;
+    };
+  }, [params?.id, user?.id, GROUP_CHAT_WS_URL])
 
   const handleSend = async () => {
     const text = newText.trim()

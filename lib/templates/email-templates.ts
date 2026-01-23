@@ -128,7 +128,7 @@ export function welcomeEmailTemplate(userName: string): { html: string; text: st
 export function otpEmailTemplate(
     userName: string,
     otp: string,
-    purpose: 'verify_email' | 'forgot_password' | 'sensitive_action',
+    purpose: 'verify_email' | 'forgot_password' | 'sensitive_action' | 'signup_verification',
     expiryMinutes: number = 10
 ): { html: string; text: string; subject: string } {
     const firstName = userName.split(' ')[0] || 'there';
@@ -148,6 +148,11 @@ export function otpEmailTemplate(
             title: 'Confirm Your Action',
             description: 'Please use the code below to confirm this action.',
             subject: `Your ${BRAND_NAME} Confirmation Code: ${otp}`
+        },
+        signup_verification: {
+            title: 'Complete Your Registration',
+            description: 'You\'re almost there! Use the code below to verify your email and complete your account registration.',
+            subject: `Complete Your ${BRAND_NAME} Registration: ${otp}`
         }
     };
 

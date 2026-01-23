@@ -223,6 +223,25 @@ io.on('connection', async (socket) => {
   await socket.join(userRoom);
   console.log(`Socket ${socket.id} joined private room ${userRoom}`);
 
+  // AUTOMATIC GROUP JOINING
+  // Fetch all secret groups this user is a member of and join their rooms
+  try {
+    const client = await pool.connect();
+    try {
+      const groupsRes = await client.query('SELECT group_id FROM secret_group_memberships WHERE user_id = $1', [Number(userId)]);
+      const groups = groupsRes.rows;
+      if (groups.length > 0) {
+        const rooms = groups.map((g: any) => `group-${g.group_id}`);
+        await socket.join(rooms);
+        console.log(`Socket ${socket.id} (User ${userId}) auto-joined ${groups.length} group rooms`);
+      }
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error(`Error auto-joining groups for user ${userId}:`, err);
+  }
+
 
   socket.on('error', (error) => {
     console.error('Socket error:', error)

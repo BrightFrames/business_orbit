@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
       const limitParamIndex = paramCount;
 
       // Primary Feed Query (Optimization: No JOINs for heavy data, correlated subqueries for counts)
+      // Primary Feed Query (Optimization: Removed correlated subqueries)
       const postsQuery = `
         SELECT 
           p.id,
@@ -67,10 +68,7 @@ export async function GET(request: NextRequest) {
           u.id as user_id,
           u.name as user_name,
           u.profile_photo_url,
-          u.profession,
-          (SELECT COUNT(*)::integer FROM post_engagements WHERE post_id = p.id AND engagement_type = 'like') as likes,
-          (SELECT COUNT(*)::integer FROM post_comments WHERE post_id = p.id) as comments,
-          (SELECT COUNT(*)::integer FROM post_engagements WHERE post_id = p.id AND engagement_type = 'share') as shares
+          u.profession
         FROM posts p
         JOIN users u ON p.user_id = u.id
         WHERE ${conditions.join(' AND ')}
@@ -80,31 +78,78 @@ export async function GET(request: NextRequest) {
 
       const postsResult = await client.query(postsQuery, values);
 
-      // Secondary Query: Fetch Media (Lazy/Batch loading optimization)
-      // We fetch media here to prevent N+1 on frontend, but it's a separate efficient batch query.
+      // Batch Fetch Media & Counts (Optimization: Prevent N+1)
       const postIds = postsResult.rows.map(post => post.id);
-      let postsWithMedia = postsResult.rows.map(post => ({ ...post, media: [] }));
+      let postsWithData = postsResult.rows.map(post => ({
+        ...post,
+        media: [],
+        likes: 0,
+        comments: 0,
+        shares: 0
+      }));
 
       if (postIds.length > 0) {
-        const mediaQuery = `
-          SELECT post_id, id, media_type, cloudinary_url, file_name, file_size, mime_type
-          FROM post_media
-          WHERE post_id = ANY($1)
-          ORDER BY created_at ASC
-        `;
-        const mediaResult = await client.query(mediaQuery, [postIds]);
+        // Parallelize helper queries
+        const [mediaResult, likesResult, commentsResult, sharesResult] = await Promise.all([
+          // 1. Media
+          client.query(`
+                SELECT post_id, id, media_type, cloudinary_url, file_name, file_size, mime_type
+                FROM post_media
+                WHERE post_id = ANY($1)
+                ORDER BY created_at ASC
+            `, [postIds]),
+          // 2. Likes Count
+          client.query(`
+                SELECT post_id, COUNT(*) as count 
+                FROM post_engagements 
+                WHERE post_id = ANY($1) AND engagement_type = 'like'
+                GROUP BY post_id
+            `, [postIds]),
+          // 3. Comments Count
+          client.query(`
+                SELECT post_id, COUNT(*) as count 
+                FROM post_comments 
+                WHERE post_id = ANY($1) 
+                GROUP BY post_id
+            `, [postIds]),
+          // 4. Shares Count
+          client.query(`
+                SELECT post_id, COUNT(*) as count 
+                FROM post_engagements 
+                WHERE post_id = ANY($1) AND engagement_type = 'share'
+                GROUP BY post_id
+            `, [postIds])
+        ]);
 
-        // Group media by post_id
-        const mediaByPostId = mediaResult.rows.reduce((acc: any, media: any) => {
-          if (!acc[media.post_id]) acc[media.post_id] = [];
-          acc[media.post_id].push(media);
+        // Create lookups
+        const mediaByPost = mediaResult.rows.reduce((acc: any, row: any) => {
+          if (!acc[row.post_id]) acc[row.post_id] = [];
+          acc[row.post_id].push(row);
           return acc;
         }, {});
 
-        // Attach media to posts
-        postsWithMedia = postsWithMedia.map(post => ({
+        const likesByPost = likesResult.rows.reduce((acc: any, row: any) => {
+          acc[row.post_id] = parseInt(row.count);
+          return acc;
+        }, {});
+
+        const commentsByPost = commentsResult.rows.reduce((acc: any, row: any) => {
+          acc[row.post_id] = parseInt(row.count);
+          return acc;
+        }, {});
+
+        const sharesByPost = sharesResult.rows.reduce((acc: any, row: any) => {
+          acc[row.post_id] = parseInt(row.count);
+          return acc;
+        }, {});
+
+        // Attach data
+        postsWithData = postsWithData.map(post => ({
           ...post,
-          media: mediaByPostId[post.id] || []
+          media: mediaByPost[post.id] || [],
+          likes: likesByPost[post.id] || 0,
+          comments: commentsByPost[post.id] || 0,
+          shares: sharesByPost[post.id] || 0
         }));
       }
 
@@ -117,7 +162,7 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        data: postsWithMedia,
+        data: postsWithData,
         pagination: {
           nextCursor,
           limit

@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { User, Mail, Phone, Lock, Eye, EyeOff, Upload, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ForgotPasswordModal from './ForgotPasswordModal';
+import SignupOTPModal from './SignupOTPModal';
 
 interface AuthFormProps {
   mode?: 'signin' | 'signup';
@@ -32,7 +34,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode = 'signin', setMode }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const { login, signup } = useAuth();
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [sessionToken, setSessionToken] = useState('');
+  const { login, checkAuth } = useAuth();
+  const router = useRouter();
 
   // Listen for forgot password event from FormFields
   useEffect(() => {
@@ -174,12 +180,20 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode = 'signin', setMode }) => {
         });
       }
     } else {
+      // Signup flow with OTP verification
       if (formData.password !== formData.confirmPassword) {
-        alert('Passwords do not match');
+        toast.error('Passwords do not match');
         setLoading(false);
         return;
       }
 
+      if (formData.password.length < 6) {
+        toast.error('Password must be at least 6 characters');
+        setLoading(false);
+        return;
+      }
+
+      // Build form data for initiate-signup
       const submitData = new FormData();
       submitData.append('name', formData.name);
       submitData.append('email', formData.email);
@@ -199,13 +213,39 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode = 'signin', setMode }) => {
         submitData.append('banner', banner);
       }
 
-      const result = await signup(submitData);
-      if (result.success) {
-        return;
+      try {
+        // Call initiate-signup to validate and send OTP
+        const response = await fetch('/api/auth/initiate-signup', {
+          method: 'POST',
+          body: submitData,
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Show OTP modal
+          setOtpEmail(data.email);
+          setSessionToken(data.sessionToken);
+          setShowOTPModal(true);
+          toast.success('Verification code sent to your email!');
+        } else {
+          toast.error(data.error || 'Failed to initiate signup');
+        }
+      } catch (error) {
+        toast.error('Something went wrong. Please try again.');
       }
     }
 
     setLoading(false);
+  };
+
+  // Handle successful OTP verification
+  const handleOTPVerificationSuccess = async (user: any) => {
+    setShowOTPModal(false);
+    // Refresh auth state
+    await checkAuth();
+    // Navigate to feed
+    router.push('/product/feed');
   };
 
   const handleOAuthLogin = (provider: string) => {
@@ -434,6 +474,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode = 'signin', setMode }) => {
       <ForgotPasswordModal
         isOpen={showForgotPassword}
         onClose={() => setShowForgotPassword(false)}
+      />
+
+      {/* Signup OTP Modal */}
+      <SignupOTPModal
+        isOpen={showOTPModal}
+        onClose={() => setShowOTPModal(false)}
+        email={otpEmail}
+        sessionToken={sessionToken}
+        onVerificationSuccess={handleOTPVerificationSuccess}
       />
     </div>
   );

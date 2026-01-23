@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
         console.log(`[Bootstrap] Loaded data for user ${userId} in ${Date.now() - start}ms`);
 
-        return NextResponse.json({
+        const response = NextResponse.json({
             success: true,
             data: {
                 user: {
@@ -94,6 +94,11 @@ export async function GET(request: NextRequest) {
                 notifications
             }
         });
+
+        // Add cache headers for performance (private cache only)
+        response.headers.set('Cache-Control', 'private, max-age=30, stale-while-revalidate=60');
+
+        return response;
 
     } catch (error) {
         console.error('Bootstrap API Error:', error);

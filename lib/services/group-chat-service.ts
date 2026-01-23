@@ -9,6 +9,9 @@ export interface GroupChatMessage {
   senderAvatarUrl: string | null;
   content: string;
   timestamp: string;
+  messageType?: 'text' | 'audio' | 'image' | 'video';
+  mediaUrl?: string;
+  metadata?: any;
 }
 
 export interface GroupChatPaginationResult {
@@ -33,12 +36,18 @@ class GroupChatService {
     `)
   }
 
-  async storeMessage(message: Omit<GroupChatMessage, 'id' | 'timestamp' | 'senderName' | 'senderAvatarUrl'>): Promise<GroupChatMessage> {
+  async storeMessage(
+    message: Omit<GroupChatMessage, 'id' | 'timestamp' | 'senderName' | 'senderAvatarUrl'>
+  ): Promise<GroupChatMessage> {
+    const type = message.messageType || 'text';
+    const mediaUrl = message.mediaUrl || null;
+    const metadata = message.metadata || {};
+
     const result = await pool.query(
-      `INSERT INTO secret_group_messages (group_id, sender_id, content)
-       VALUES ($1, $2, $3)
+      `INSERT INTO secret_group_messages (group_id, sender_id, content, message_type, media_url, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, created_at`,
-      [message.groupId, message.senderId, message.content]
+      [message.groupId, message.senderId, message.content, type, mediaUrl, metadata]
     )
 
     const meta = await pool.query('SELECT name, profile_photo_url FROM users WHERE id = $1', [message.senderId])
@@ -59,6 +68,9 @@ class GroupChatService {
       senderAvatarUrl: meta.rows[0]?.profile_photo_url || null,
       content: message.content,
       timestamp: new Date(row.created_at).toISOString(),
+      messageType: type,
+      mediaUrl: mediaUrl || undefined,
+      metadata
     }
   }
 
@@ -71,10 +83,13 @@ class GroupChatService {
         u.name as "senderName",
         u.profile_photo_url as "senderAvatarUrl",
         gm.content,
+        gm.message_type as "messageType",
+        gm.media_url as "mediaUrl",
+        gm.metadata,
         gm.created_at as timestamp
       FROM secret_group_messages gm
       JOIN users u ON u.id = gm.sender_id
-      WHERE gm.group_id = $1
+      WHERE gm.group_id = $1 AND gm.is_archived = FALSE
     `
     const params: any[] = [groupId]
     if (cursor) { query += ` AND gm.created_at < $2`; params.push(cursor) }
@@ -90,6 +105,9 @@ class GroupChatService {
       senderAvatarUrl: r.senderAvatarUrl,
       content: r.content,
       timestamp: new Date(r.timestamp).toISOString(),
+      messageType: r.messageType || 'text',
+      mediaUrl: r.mediaUrl,
+      metadata: r.metadata || {}
     }))
     const hasMore = messages.length > limit
     if (hasMore) messages.pop()
