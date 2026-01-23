@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     linkedin_id VARCHAR(255),
     is_admin BOOLEAN DEFAULT FALSE,
     orbit_points INTEGER DEFAULT 0,
+    gender VARCHAR(20), -- Gender for avatar style: male, female, other, null
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

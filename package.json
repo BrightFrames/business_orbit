@@ -7,6 +7,8 @@
     "lib": "lib"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.3.1",
+    "@dicebear/core": "^9.3.1",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-progress": "^1.1.7",

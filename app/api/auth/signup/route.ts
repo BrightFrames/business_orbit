@@ -4,6 +4,7 @@ import { cloudinary } from '@/lib/config/cloudinary';
 import pool from '@/lib/config/database';
 import { generateToken, setTokenCookie } from '@/lib/utils/auth';
 import { proxyToBackend } from '@/lib/utils/proxy-api';
+import { generateAvatarUrl, type Gender } from '@/lib/utils/avatar';
 
 export const runtime = 'nodejs';
 
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
 
   // Declare variables at function scope so they're accessible in catch block
   let name: string = '', email: string = '', phone: string = '', password: string = '', confirmPassword: string = '';
-  let skills: string = '', description: string = '', profession: string = '', interest: string = '';
+  let skills: string = '', description: string = '', profession: string = '', interest: string = '', gender: Gender = null;
   let profilePhoto: File | null = null, banner: File | null = null;
   let skillsArray: string[] = [];
   let passwordHash: string = '';
@@ -37,6 +38,8 @@ export async function POST(request: NextRequest) {
     description = formData.get('description') as string;
     profession = formData.get('profession') as string;
     interest = formData.get('interest') as string;
+    const genderInput = formData.get('gender') as string;
+    gender = (genderInput === 'male' || genderInput === 'female' || genderInput === 'other') ? genderInput : null;
     profilePhoto = formData.get('profilePhoto') as File;
     banner = formData.get('banner') as File;
 
@@ -198,14 +201,47 @@ export async function POST(request: NextRequest) {
       // Column might already exist, that's okay - ignore the error
     }
 
+    // Try to add the gender column if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(20)
+      `);
+    } catch (columnError: any) {
+      // Column might already exist, that's okay - ignore the error
+    }
+
+    // Generate DiceBear avatar if no profile photo was uploaded
+    // This ensures every user has an avatar
+    let finalProfilePhotoUrl = profilePhotoUrl;
+    if (!profilePhotoUrl) {
+      // We'll generate the avatar URL after we have the user ID
+      // For now, leave it null and update after insert
+    }
+
     const result = await pool.query(
-      `INSERT INTO users (name, email, phone, password_hash, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, email_verified)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, FALSE)
-       RETURNING id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, email_verified, created_at`,
-      [name, email, phone, passwordHash, profilePhotoUrl, profilePhotoId, bannerUrl, bannerId, skillsArray, description, profession || null, interest || null]
+      `INSERT INTO users (name, email, phone, password_hash, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, gender, email_verified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, FALSE)
+       RETURNING id, name, email, phone, profile_photo_url, profile_photo_id, banner_url, banner_id, skills, description, profession, interest, gender, email_verified, created_at`,
+      [name, email, phone, passwordHash, profilePhotoUrl, profilePhotoId, bannerUrl, bannerId, skillsArray, description, profession || null, interest || null, gender]
     );
 
     const user = result.rows[0];
+
+    // Generate DiceBear avatar if no profile photo was uploaded
+    // This ensures every user has an avatar from day one
+    if (!profilePhotoUrl) {
+      try {
+        const avatarUrl = generateAvatarUrl(user.id, gender);
+        await pool.query(
+          'UPDATE users SET profile_photo_url = $1 WHERE id = $2',
+          [avatarUrl, user.id]
+        );
+        user.profile_photo_url = avatarUrl;
+      } catch (avatarError) {
+        // Non-blocking: if avatar generation fails, user creation still succeeds
+        console.error('[Signup] Failed to generate avatar:', avatarError);
+      }
+    }
 
     // Generate JWT token
     const token = generateToken(user.id);

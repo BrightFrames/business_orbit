@@ -21,6 +21,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode = 'signin', setMode }) => {
     description: '',
     profession: '',
     interest: '',
+    gender: '',
   });
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
@@ -188,6 +189,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode = 'signin', setMode }) => {
       submitData.append('description', formData.description);
       submitData.append('profession', formData.profession);
       submitData.append('interest', formData.interest);
+      submitData.append('gender', formData.gender);
       submitData.append('skills', JSON.stringify(selectedSkills));
 
       if (profilePhoto) {
@@ -289,6 +291,39 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode = 'signin', setMode }) => {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200"
                 placeholder="Enter your interests"
               />
+            </div>
+          </div>
+        )}
+
+        {/* Gender Selection - only for signup */}
+        {!isSignIn && (
+          <div>
+            <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
+              Gender <span className="text-gray-400 text-xs">(for avatar style)</span>
+            </label>
+            <div className="relative">
+              <select
+                id="gender"
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200 appearance-none bg-white cursor-pointer text-black"
+                style={{
+                  colorScheme: 'light',
+                  backgroundColor: 'white',
+                  color: 'black'
+                }}
+              >
+                <option value="">Prefer not to say</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
         )}

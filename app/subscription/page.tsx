@@ -20,6 +20,7 @@ interface SubscriptionPlan {
 export default function SubscriptionPage() {
   const { user, loading } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   const plans: SubscriptionPlan[] = [
     {
@@ -213,8 +214,8 @@ export default function SubscriptionPage() {
             onClick={handleProceedToPay}
             disabled={!selectedPlan || processing}
             className={`px-8 py-4 text-lg rounded-lg transition-all duration-200 ${selectedPlan
-                ? 'bg-gray-900 text-white hover:bg-gray-800'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              ? 'bg-gray-900 text-white hover:bg-gray-800'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
           >
             {processing ? (
