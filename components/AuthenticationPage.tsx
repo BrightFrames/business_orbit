@@ -84,8 +84,8 @@ export default function AuthenticationPage() {
         if (user && !loading) {
             // User is authenticated, determine where to redirect based on user type
             if (isAdmin) {
-                // Admin user: go to product admin panel (not /admin)
-                router.push('/product/admin');
+                // Admin user: go to admin panel
+                router.push('/admin');
             } else if (isNewUser) {
                 // New regular user: follow full flow
                 if (!inviteSent) {
@@ -139,7 +139,7 @@ export default function AuthenticationPage() {
                     }
                     // Small delay to ensure cookie is set, then redirect
                     setTimeout(() => {
-                        window.location.href = '/product/admin';
+                        window.location.href = '/admin';
                     }, 100);
                     return;
                 }
