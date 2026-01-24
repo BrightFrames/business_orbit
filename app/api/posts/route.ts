@@ -79,8 +79,8 @@ export async function GET(request: NextRequest) {
       const postsResult = await client.query(postsQuery, values);
 
       // Batch Fetch Media & Counts (Optimization: Prevent N+1)
-      const postIds = postsResult.rows.map(post => post.id);
-      let postsWithData = postsResult.rows.map(post => ({
+      const postIds = postsResult.rows.map((post: any) => post.id);
+      let postsWithData = postsResult.rows.map((post: any) => ({
         ...post,
         media: [],
         likes: 0,
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
         }, {});
 
         // Attach data
-        postsWithData = postsWithData.map(post => ({
+        postsWithData = postsWithData.map((post: any) => ({
           ...post,
           media: mediaByPost[post.id] || [],
           likes: likesByPost[post.id] || 0,

@@ -95,8 +95,21 @@ export default function MessagesPage() {
                 toast.success("New message received", { icon: '💬' });
             }
 
-            // Always refresh conversations to update previews and unread counts
-            refreshConversations();
+            // Optimistic update: Update conversation preview locally instead of full refetch
+            // This reduces API calls significantly
+            setConversations(prev => {
+                return prev.map(conv => {
+                    if (conv.id === msg.conversationId) {
+                        return {
+                            ...conv,
+                            lastMessage: msg.content,
+                            lastMessageAt: msg.createdAt,
+                            unreadCount: activeConversation?.id === conv.id ? 0 : conv.unreadCount + 1
+                        };
+                    }
+                    return conv;
+                }).sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+            });
         }
 
         socket.on('receive_message', handleNewMessage);
@@ -108,6 +121,7 @@ export default function MessagesPage() {
 
     // Fetch Conversations
     const refreshConversations = async (targetUserId?: string) => {
+        if (!user) return;
         try {
             const res = await fetch('/api/messages/conversations', { credentials: 'include' })
             const data = await res.json()

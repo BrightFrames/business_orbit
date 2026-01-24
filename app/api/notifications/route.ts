@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         // Fetch notifications and unread count in parallel
         const [notificationsResult, countResult] = await Promise.all([
             pool.query(
-                `SELECT id, type, title, message, link, is_read, created_at, metadata 
+                `SELECT id, type, title, message, link, is_read, created_at 
          FROM notifications 
          WHERE user_id = $1 
          ORDER BY created_at DESC 

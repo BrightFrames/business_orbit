@@ -115,6 +115,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const checkAuth = async () => {
+    // Check if we are on a public page (landing, auth, about, blog, pricing)
+    // If so, and if we don't have a token cookie (roughly checked), we can skip the API call
+    // to avoid 401 errors in the console.
+
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const isPublicPage =
+        path === '/' ||
+        path.startsWith('/product/auth') ||
+        path === '/about' ||
+        path === '/blog' ||
+        path === '/pricing' ||
+        path.startsWith('/blog/') || // Future proofing
+        path.startsWith('/pricing/');
+
+      if (isPublicPage && !hasToken()) {
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const response = await fetch('/api/bootstrap', {
         credentials: 'include',

@@ -148,7 +148,7 @@ class DMService {
 
         const res = await pool.query(query, [userId]);
 
-        return res.rows.map(row => ({
+        return res.rows.map((row: any) => ({
             id: row.id,
             otherUser: {
                 id: row.otherUserId,
@@ -197,7 +197,7 @@ class DMService {
         params.push(limit + 1);
 
         const res = await pool.query(query, params);
-        const messages = res.rows.map(row => ({
+        const messages = res.rows.map((row: any) => ({
             ...row,
             senderId: row.senderId.toString(),
             content: decompressMessage(row.content),

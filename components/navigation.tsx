@@ -33,12 +33,16 @@ export function Navigation() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left - Logo */}
-            <Link href="/product/feed" className="flex items-center group cursor-pointer">
-              <div className="w-9 h-9 rounded-full border-2 border-foreground flex items-center justify-center transition-all group-hover:scale-105 group-hover:shadow-soft">
-                <div className="w-4 h-4 rounded-full border-2 border-foreground transition-all group-hover:bg-foreground"></div>
+            <a href="/product/feed" className="flex items-center group cursor-pointer">
+              <div className="relative w-10 h-10 transition-transform group-hover:scale-105">
+                <img
+                  src="/favicon.jpg"
+                  alt="Business Orbit"
+                  className="w-full h-full object-contain rounded-full"
+                />
               </div>
               <span className="ml-3 text-xl font-bold tracking-tight">Business Orbit</span>
-            </Link>
+            </a>
 
             {/* Center - Navigation Tabs */}
             <div className="hidden md:flex items-center space-x-1 bg-muted/50 rounded-full p-1">

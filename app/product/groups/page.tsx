@@ -290,10 +290,9 @@ export default function ProductGroupsPage() {
     }
   }, [user?.id])
 
+  // Initial load only - no polling to reduce API costs
   React.useEffect(() => {
     fetchGroupRequests()
-    const interval = setInterval(fetchGroupRequests, 30000)
-    return () => clearInterval(interval)
   }, [fetchGroupRequests])
 
   const fetchUpcomingEvents = async (forceRefresh = false) => {
@@ -346,15 +345,22 @@ export default function ProductGroupsPage() {
     fetchUpcomingEvents()
   }, [user?.id])
 
-  // periodic refresh
-  React.useEffect(() => {
-    const interval = setInterval(() => fetchUpcomingEvents(false), 120000)
-    return () => clearInterval(interval)
-  }, [])
+  // Events are mostly static - no need for polling
+  // Users can manually refresh if needed
 
-  // focus refresh
+  // Debounced visibility refresh - only if tab was hidden for 5+ minutes
+  const lastEventsFetch = React.useRef<number>(Date.now())
   React.useEffect(() => {
-    const handler = () => { if (!document.hidden) fetchUpcomingEvents(false) }
+    const handler = () => {
+      if (!document.hidden) {
+        const now = Date.now()
+        // Only refetch if more than 5 minutes since last fetch
+        if (now - lastEventsFetch.current > 300000) {
+          lastEventsFetch.current = now
+          fetchUpcomingEvents(false)
+        }
+      }
+    }
     document.addEventListener('visibilitychange', handler)
     return () => document.removeEventListener('visibilitychange', handler)
   }, [])

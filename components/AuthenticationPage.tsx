@@ -191,6 +191,12 @@ export default function AuthenticationPage() {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <div className={`${mode === 'signup' ? 'max-w-6xl' : 'max-w-md'} w-full space-y-8`}>
                 <div className="text-center">
+                    <div
+                        className="flex justify-center mb-4 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => window.location.reload()}
+                    >
+                        <img src="/favicon.jpg" alt="Business Orbit" className="w-16 h-16 object-contain rounded-full" />
+                    </div>
                     <h1 className="text-4xl font-bold text-black mb-2">
                         Business Orbit
                     </h1>

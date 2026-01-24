@@ -1,27 +1,11 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Calendar, Clock, MapPin, Users } from 'lucide-react'
-import { safeApiCall } from '@/lib/utils/api'
-import { useAuth } from '@/contexts/AuthContext'
-import { toast } from 'sonner'
-
-interface Event {
-  id: string
-  title: string
-  description?: string
-  date: string
-  time: string
-  location: string
-  host: string
-  attendees_count: number
-  max_attendees?: number
-  is_joined: boolean
-  event_type?: string
-}
+import { useSidebarData } from '@/contexts/SidebarDataContext'
 
 interface UpcomingEventsCardProps {
   className?: string
@@ -29,113 +13,8 @@ interface UpcomingEventsCardProps {
 
 export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCardProps) {
   const router = useRouter()
-  const { user } = useAuth()
-  const [events, setEvents] = useState<Event[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { upcomingEvents, eventsLoading } = useSidebarData()
   const [joining, setJoining] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const result = await safeApiCall(
-          () => fetch(`/api/events`, {
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          }),
-          'Failed to fetch events'
-        )
-
-        if (result.success && result.data && Array.isArray(result.data)) {
-          // The events API returns the events array directly
-          const eventsData = result.data as any[]
-
-          // Filter for upcoming events and limit to 3
-          const upcomingEvents = eventsData
-            .filter((event: any) => {
-              try {
-                const eventDate = new Date(event.date)
-                const now = new Date()
-                // Add some tolerance for events happening today
-                now.setHours(0, 0, 0, 0)
-                return eventDate >= now
-              } catch (error) {
-                console.error('Error parsing event date:', event.date, error)
-                return false
-              }
-            })
-            .slice(0, 3)
-            .map((event: any) => ({
-              id: event.id,
-              title: event.title,
-              description: event.description,
-              date: event.date,
-              time: event.time || '6:00 PM',
-              location: event.venue_address || 'TBD',
-              host: event.host || 'Business Orbit',
-              attendees_count: event.rsvp_count || 0,
-              max_attendees: event.max_attendees,
-              is_joined: event.is_registered === true || event.is_registered === 1 || event.is_registered === 'true' || event.is_registered === 't' || (typeof event.is_registered === 'number' && event.is_registered > 0),
-              event_type: event.event_type
-            }))
-          setEvents(upcomingEvents)
-        } else {
-          setError('Failed to load events')
-        }
-      } catch (error) {
-        console.error('Error fetching events:', error)
-        setError('Failed to load events')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchEvents()
-  }, [user])
-
-  const handleJoinEvent = async (eventId: string, eventTitle: string) => {
-    try {
-      setJoining(prev => new Set(prev).add(eventId))
-
-      const result = await safeApiCall(
-        () => fetch(`/api/events/${eventId}/rsvp`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({ action: 'join' })
-        }),
-        'Failed to join event'
-      )
-
-      if (result.success) {
-        // Update the event status
-        setEvents(prev => prev.map(event =>
-          event.id === eventId
-            ? { ...event, is_joined: true, attendees_count: event.attendees_count + 1 }
-            : event
-        ))
-        toast.success(`Registered for ${eventTitle}`)
-      } else {
-        toast.error(result.error || 'Failed to join event')
-      }
-    } catch (error) {
-      console.error('Error joining event:', error)
-      toast.error('Failed to join event')
-    } finally {
-      setJoining(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(eventId)
-        return newSet
-      })
-    }
-  }
 
   const formatEventDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -157,7 +36,7 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
     }
   }
 
-  if (loading) {
+  if (eventsLoading) {
     return (
       <Card className={`p-4 ${className}`}>
         <div className="animate-pulse">
@@ -176,21 +55,11 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
     )
   }
 
-  if (error) {
-    return (
-      <Card className={`p-4 ${className}`}>
-        <div className="text-center text-sm text-muted-foreground">
-          {error}
-        </div>
-      </Card>
-    )
-  }
-
   return (
     <Card className={`p-4 ${className}`}>
       <h3 className="font-semibold text-sm mb-3">Upcoming Events</h3>
       <div className="space-y-3">
-        {events.length === 0 ? (
+        {upcomingEvents.length === 0 ? (
           <div className="text-center py-4">
             <div className="w-12 h-12 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-2">
               <Calendar className="w-6 h-6 text-muted-foreground" />
@@ -198,7 +67,7 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
             <p className="text-xs text-muted-foreground">No upcoming events</p>
           </div>
         ) : (
-          events.map((event) => (
+          upcomingEvents.map((event) => (
             <div key={event.id} className="space-y-2">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -245,6 +114,6 @@ export default function UpcomingEventsCard({ className = "" }: UpcomingEventsCar
           ))
         )}
       </div>
-    </Card >
+    </Card>
   )
 }

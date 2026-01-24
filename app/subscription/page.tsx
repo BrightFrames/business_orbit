@@ -24,6 +24,20 @@ export default function SubscriptionPage() {
 
   const plans: SubscriptionPlan[] = [
     {
+      id: 'free',
+      name: 'Free Tier',
+      tagline: 'Get started at no cost',
+      price: '₹0',
+      period: 'Forever',
+      features: [
+        'Access to public communities',
+        'Basic profile',
+        'View events',
+        'Limited connections (up to 50)',
+        'Community support'
+      ]
+    },
+    {
       id: 'monthly',
       name: 'Monthly Plan',
       tagline: 'Perfect for getting started',
@@ -31,6 +45,7 @@ export default function SubscriptionPage() {
       period: 'Month',
       features: [
         'Full access to all features',
+        'Unlimited connections',
         'Priority support',
         'Cancel anytime'
       ]
@@ -43,6 +58,7 @@ export default function SubscriptionPage() {
       period: '6 Months',
       features: [
         'Full access to all features',
+        'Unlimited connections',
         'Priority support',
         'Cancel anytime',
         'Save ₹2500'
@@ -58,6 +74,7 @@ export default function SubscriptionPage() {
       period: '12 Months',
       features: [
         'Full access to all features',
+        'Unlimited connections',
         'Priority support',
         'Cancel anytime',
         'Save ₹5000'
@@ -83,6 +100,18 @@ export default function SubscriptionPage() {
     try {
       const plan = plans.find(p => p.id === selectedPlan);
       if (!plan) return;
+
+      // Handle free tier - skip payment and go directly to app
+      if (selectedPlan === 'free') {
+        // Optionally save the subscription choice
+        await fetch('/api/preferences', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription_plan: 'free' }),
+        });
+        window.location.href = '/product/profile';
+        return;
+      }
 
       // Clean price string to get number (e.g., '₹1000' -> 1000)
       const amount = parseInt(plan.price.replace(/[^0-9]/g, ''));
@@ -223,7 +252,7 @@ export default function SubscriptionPage() {
             ) : (
               <Wallet className="h-5 w-5 mr-2" />
             )}
-            {processing ? 'Processing...' : 'Proceed to Pay'}
+            {processing ? 'Processing...' : selectedPlan === 'free' ? 'Get Started Free' : 'Proceed to Pay'}
           </Button>
           {!selectedPlan && (
             <p className="text-sm text-gray-500 mt-2">

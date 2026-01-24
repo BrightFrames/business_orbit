@@ -1,72 +1,20 @@
 "use client"
 
-import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ChevronDown, Lock } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-
-interface SecretGroup {
-  id: string
-  name: string
-  description?: string
-  member_count?: number
-  is_private: boolean
-}
+import { useSidebarData } from '@/contexts/SidebarDataContext'
+import { useState } from 'react'
 
 interface SecretGroupsCardProps {
   className?: string
 }
 
 export default function SecretGroupsCard({ className = "" }: SecretGroupsCardProps) {
-  const { user } = useAuth()
-  const [groups, setGroups] = useState<SecretGroup[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { secretGroups, secretGroupsLoading } = useSidebarData()
   const [expanded, setExpanded] = useState(false)
 
-  useEffect(() => {
-    const fetchSecretGroups = async () => {
-      if (!user?.id) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        setError(null)
-
-        const res = await fetch(`/api/users/${user.id}/secret-groups`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        })
-
-        if (res.ok) {
-          const data = await res.json()
-          const userGroups = (data?.groups || []).map((g: any) => ({
-            id: String(g.id),
-            name: String(g.name || ''),
-            description: g.description,
-            member_count: Number(g.member_count || 0),
-            is_private: true
-          }))
-          setGroups(userGroups)
-        } else {
-          setError('Failed to load secret groups')
-        }
-      } catch (error) {
-        setError('Failed to load secret groups')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchSecretGroups()
-  }, [user?.id])
-
-  if (loading) {
+  if (secretGroupsLoading) {
     return (
       <Card className={`p-4 ${className}`}>
         <div className="animate-pulse">
@@ -87,16 +35,6 @@ export default function SecretGroupsCard({ className = "" }: SecretGroupsCardPro
     )
   }
 
-  if (error) {
-    return (
-      <Card className={`p-4 ${className}`}>
-        <div className="text-center text-sm text-muted-foreground">
-          {error}
-        </div>
-      </Card>
-    )
-  }
-
   return (
     <Card className={`p-4 ${className}`}>
       <div className="space-y-3">
@@ -108,33 +46,30 @@ export default function SecretGroupsCard({ className = "" }: SecretGroupsCardPro
           <div className="flex items-center">
             <Lock className="w-4 h-4 mr-2" />
             <span className="text-sm">Secret Groups</span>
-            {groups.length > 0 && (
+            {secretGroups.length > 0 && (
               <span className="ml-2 text-xs text-muted-foreground">
-                ({groups.length})
+                ({secretGroups.length})
               </span>
             )}
           </div>
           <ChevronDown
-            className={`w-4 h-4 transition-transform ${
-              expanded ? "rotate-180" : ""
-            }`}
+            className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""
+              }`}
           />
         </Button>
-        
+
         {expanded && (
           <div className="ml-6 mt-2 space-y-1">
-            {groups.length === 0 ? (
+            {secretGroups.length === 0 ? (
               <p className="text-xs text-muted-foreground">No secret groups available</p>
             ) : (
-              groups.map((group) => (
+              secretGroups.map((group) => (
                 <Button
                   key={group.id}
                   variant="ghost"
                   className="w-full justify-start p-1 h-auto text-xs"
                   onClick={() => {
-                    // Try to navigate to group page, or show a message if it's a preference-based group
                     if (group.id.startsWith('secret-')) {
-                      // This is a preference-based group, navigate to groups page
                       window.location.href = '/product/groups'
                     } else {
                       window.location.href = `/product/groups/${group.id}`
@@ -156,5 +91,3 @@ export default function SecretGroupsCard({ className = "" }: SecretGroupsCardPro
     </Card>
   )
 }
-
-

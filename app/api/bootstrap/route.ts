@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         // Update last_active_at efficiently (fire and forget)
         // Use pool.query directly - safe as it manages its own connection
         pool.query('UPDATE users SET last_active_at = NOW() WHERE id = $1', [userId])
-            .catch(err => console.error('Failed to update activity', err));
+            .catch((err: any) => console.error('Failed to update activity', err));
 
         console.log(`[Bootstrap] Loaded data for user ${userId} in ${Date.now() - start}ms`);
 

@@ -22,9 +22,11 @@ export const setTokenCookie = (res: NextResponse, token: string): void => {
 };
 
 // Simple in-memory cache to reduce DB load
+// CRITICAL: This cache prevents repeated DB queries for user data
+// Each serverless instance has its own cache, but it still reduces load significantly
 // Map<userId, { user: UserData, timestamp: number }>
 const userCache = new Map<number, { user: any, timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes - extended for better cost reduction
 
 export const invalidateUserCache = (userId: number) => {
   userCache.delete(userId);

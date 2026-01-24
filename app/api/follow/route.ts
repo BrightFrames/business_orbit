@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/config/database'
 import { getUserFromToken } from '@/lib/utils/auth'
+import { checkRateLimit, buildRateLimitKey, getClientIp, RATE_LIMITS } from '@/lib/utils/rateLimiter'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,6 +9,18 @@ export async function POST(request: NextRequest) {
     const user = await getUserFromToken(request)
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limit check - prevent rapid-fire follow/unfollow
+    const rateLimitKey = buildRateLimitKey(user.id, getClientIp(request), '/api/follow', 'POST')
+    const rateLimit = checkRateLimit(rateLimitKey, RATE_LIMITS.rapidFire)
+
+    if (!rateLimit.success) {
+      return NextResponse.json({
+        success: false,
+        error: 'Too many requests. Please wait a moment.',
+        retryAfter: Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
+      }, { status: 429 })
     }
 
     const { targetUserId, action } = await request.json()

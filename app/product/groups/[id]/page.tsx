@@ -201,8 +201,8 @@ export default function GroupDetailsPage() {
     }
 
     try {
-      if (s?.connected) {
-        s.emit('group:send', { id: tempId, groupId: String(params.id), senderId: String(user?.id || ''), content: text }, (ack?: { ok: boolean; message?: GroupMessage }) => {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('group:send', { id: tempId, groupId: String(params.id), senderId: String(user?.id || ''), content: text }, (ack?: { ok: boolean; message?: GroupMessage }) => {
           if (ack?.ok && ack.message) {
             setMessages(prev => {
               // If real message already exists (from listener race), just remove the temp one

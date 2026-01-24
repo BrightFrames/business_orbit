@@ -1,115 +1,20 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { UserPlus, Users } from 'lucide-react'
 import { safeApiCall } from '@/lib/utils/api'
 import toast from 'react-hot-toast'
-import { useAuth } from '@/contexts/AuthContext'
-
-interface SuggestedConnection {
-  id: number
-  name: string
-  profile_photo_url?: string
-  email?: string
-  chapters?: Array<{
-    chapter_id: string
-    chapter_name: string
-    location_city?: string
-  }>
-  userJoinedAt?: string
-}
+import { useSidebarData } from '@/contexts/SidebarDataContext'
 
 interface SuggestedConnectionsCardProps {
   className?: string
 }
 
 export default function SuggestedConnectionsCard({ className = "" }: SuggestedConnectionsCardProps) {
-  const [suggestions, setSuggestions] = useState<SuggestedConnection[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { suggestedConnections, followStatus, suggestedConnectionsLoading, updateFollowStatus } = useSidebarData()
   const [connecting, setConnecting] = useState<Set<number>>(new Set())
-  const [followStatus, setFollowStatus] = useState<Map<number, 'following' | 'pending' | 'not-following'>>(new Map())
-  const { user } = useAuth()
-
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (!user) return; // Wait until user is loaded
-
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Fetch all community members
-        const result = await safeApiCall(
-          () => fetch('/api/members', {
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          }),
-          'Failed to fetch community members'
-        )
-
-        if (result.success && result.data) {
-          const membersData = result.data as any
-          const members = membersData.members || []
-
-          // Filter out current user
-          const suggested = members
-            .filter((member: any) => member.id !== user.id)
-            .map((member: any) => ({
-              id: member.id,
-              name: member.name,
-              profile_photo_url: member.profilePhotoUrl,
-              email: member.email,
-              chapters: member.chapters || [],
-              userJoinedAt: member.userJoinedAt
-            }))
-
-          setSuggestions(suggested)
-
-          // Fetch follow status for these users
-          if (suggested.length > 0) {
-            await fetchFollowStatus(suggested.map((s: any) => s.id))
-          }
-        }
-
-      } catch (error) {
-        setError('Failed to load community members')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchSuggestions()
-  }, [user?.id])
-
-  const fetchFollowStatus = async (userIds: number[]) => {
-    try {
-      const userIdsParam = userIds.join(',')
-      const result = await safeApiCall(
-        () => fetch(`/api/follow?checkStatus=true&userIds=${userIdsParam}`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        }),
-        'Failed to fetch follow status'
-      )
-
-      if (result.success && result.data) {
-        const data = result.data as any
-        if (data.followStatus) {
-          const statusMap = new Map(Object.entries(data.followStatus).map(([k, v]) => [parseInt(k), v as any]))
-          setFollowStatus(statusMap)
-        }
-      }
-    } catch (error) {
-      // Error fetching follow status
-    }
-  }
 
   const handleConnect = async (userId: number, userName: string) => {
     try {
@@ -131,14 +36,9 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
       )
 
       if (result.success) {
-        // Update follow status
-        setFollowStatus(prev => new Map(prev).set(userId, 'pending'))
-
-        // Show success message
+        // Optimistic update via context
+        updateFollowStatus(userId, 'pending')
         toast.success(`Connection request sent to ${userName}`)
-
-        // Optional: Remove from suggestions after connecting
-        // setSuggestions(prev => prev.filter(suggestion => suggestion.id !== userId))
       } else {
         toast.error(result.error || 'Failed to send connection request')
       }
@@ -154,7 +54,7 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
     }
   }
 
-  if (loading) {
+  if (suggestedConnectionsLoading) {
     return (
       <Card className={`p-4 ${className}`}>
         <div className="animate-pulse">
@@ -176,26 +76,16 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
     )
   }
 
-  if (error) {
-    return (
-      <Card className={`p-4 ${className}`}>
-        <div className="text-center text-sm text-muted-foreground">
-          {error}
-        </div>
-      </Card>
-    )
-  }
-
   return (
     <Card className={`p-4 ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-sm">Suggested Connections</h3>
         <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-          {suggestions.length} members
+          {suggestedConnections.length} members
         </span>
       </div>
       <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full">
-        {suggestions.length === 0 ? (
+        {suggestedConnections.length === 0 ? (
           <div className="text-center py-4">
             <div className="w-12 h-12 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-2">
               <Users className="w-6 h-6 text-muted-foreground" />
@@ -203,7 +93,7 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
             <p className="text-xs text-muted-foreground">No suggestions available</p>
           </div>
         ) : (
-          suggestions.map((suggestion) => (
+          suggestedConnections.map((suggestion) => (
             <div key={suggestion.id} className="flex items-center space-x-2">
               <div
                 className="flex items-center space-x-2 flex-1 min-w-0 cursor-pointer hover:bg-muted/50 rounded-md p-1 -m-1 transition-colors"

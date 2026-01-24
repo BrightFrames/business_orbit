@@ -5,6 +5,7 @@ import { safeApiCall, generateRandomMemberCount } from "@/lib/utils/api"
 
 import { useState, useEffect, use } from "react"
 import { Navigation } from "@/components/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +23,7 @@ import { BookingModal } from '@/components/consultations/BookingModal'
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user: currentUser, loading } = useAuth()
+  const router = useRouter()
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [connectionStatus, setConnectionStatus] = useState<'not-following' | 'pending' | 'following'>('not-following')
   const [connectionLoading, setConnectionLoading] = useState(false)

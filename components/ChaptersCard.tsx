@@ -1,19 +1,11 @@
 "use client"
 
-import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ChevronDown, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { safeApiCall } from '@/lib/utils/api'
-import { useAuth } from '@/contexts/AuthContext'
-
-interface Chapter {
-  id: string
-  name: string
-  location_city: string
-  member_count: number
-}
+import { useSidebarData } from '@/contexts/SidebarDataContext'
+import { useState } from 'react'
 
 interface ChaptersCardProps {
   className?: string
@@ -21,52 +13,10 @@ interface ChaptersCardProps {
 
 export default function ChaptersCard({ className = "" }: ChaptersCardProps) {
   const router = useRouter()
-  const { user } = useAuth()
-  const [chapters, setChapters] = useState<Chapter[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { chapters, chaptersLoading } = useSidebarData()
   const [expanded, setExpanded] = useState(false)
 
-  useEffect(() => {
-    const fetchChapters = async () => {
-      if (!user) return
-      
-      try {
-        setLoading(true)
-        setError(null)
-
-        const result = await safeApiCall(
-          () => fetch(`/api/users/${user.id}/chapters`, {
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          }),
-          'Failed to fetch user chapters'
-        )
-
-        if (result.success && result.data && typeof result.data === 'object' && result.data !== null) {
-          const data = result.data as any
-          if (data.success && Array.isArray(data.chapters)) {
-            setChapters(data.chapters.slice(0, 5)) // Limit to 5 chapters
-          } else {
-            setError('Failed to load chapters')
-          }
-        } else {
-          setError('Failed to load chapters')
-        }
-      } catch (error) {
-        console.error('Error fetching chapters:', error)
-        setError('Failed to load chapters')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchChapters()
-  }, [user])
-
-  if (loading) {
+  if (chaptersLoading) {
     return (
       <Card className={`p-4 ${className}`}>
         <div className="animate-pulse">
@@ -82,16 +32,6 @@ export default function ChaptersCard({ className = "" }: ChaptersCardProps) {
               <div key={i} className="h-6 bg-muted rounded"></div>
             ))}
           </div>
-        </div>
-      </Card>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card className={`p-4 ${className}`}>
-        <div className="text-center text-sm text-muted-foreground">
-          {error}
         </div>
       </Card>
     )
@@ -115,12 +55,11 @@ export default function ChaptersCard({ className = "" }: ChaptersCardProps) {
             )}
           </div>
           <ChevronDown
-            className={`w-4 h-4 transition-transform ${
-              expanded ? "rotate-180" : ""
-            }`}
+            className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""
+              }`}
           />
         </Button>
-        
+
         {expanded && (
           <div className="ml-6 mt-2 space-y-1">
             {chapters.length === 0 ? (
@@ -132,9 +71,7 @@ export default function ChaptersCard({ className = "" }: ChaptersCardProps) {
                   variant="ghost"
                   className="w-full justify-start p-1 h-auto text-xs"
                   onClick={() => {
-                    // Try to navigate to chapter page, or show a message if it's a preference-based chapter
                     if (chapter.id.startsWith('chapter-')) {
-                      // This is a preference-based chapter, navigate to chapters page
                       router.push('/chapters')
                     } else {
                       router.push(`/chapters/${chapter.id}`)
@@ -151,5 +88,3 @@ export default function ChaptersCard({ className = "" }: ChaptersCardProps) {
     </Card>
   )
 }
-
-

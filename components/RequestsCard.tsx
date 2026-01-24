@@ -1,74 +1,27 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { UserPlus, Check, X, Clock, Users } from 'lucide-react'
 import { safeApiCall } from '@/lib/utils/api'
 import { toast } from 'sonner'
-
-interface FollowRequest {
-  id: number
-  requesterId: number
-  requesterName: string
-  requesterPhoto?: string
-  status: 'pending' | 'accepted' | 'declined'
-  createdAt: string
-}
+import { useSidebarData } from '@/contexts/SidebarDataContext'
 
 interface RequestsCardProps {
   className?: string
-  variant?: 'full' | 'compact' // Add variant prop to support both layouts
+  variant?: 'full' | 'compact'
 }
 
 export default function RequestsCard({ className = "", variant = 'full' }: RequestsCardProps) {
-  const [requests, setRequests] = useState<FollowRequest[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { followRequests, followRequestsLoading, updateFollowRequest, refreshFollowRequests } = useSidebarData()
   const [processing, setProcessing] = useState<Set<number>>(new Set())
-
-  useEffect(() => {
-    const fetchRequests = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const result = await safeApiCall(
-          () => fetch('/api/follow-requests?type=received', {
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          }),
-          'Failed to fetch follow requests'
-        )
-
-        if (result.success && result.data && typeof result.data === 'object' && result.data !== null) {
-          const data = result.data as any
-          if (data.success && Array.isArray(data.requests)) {
-            setRequests(data.requests)
-          } else {
-            setError('Failed to load follow requests')
-          }
-        } else {
-          setError('Failed to load follow requests')
-        }
-      } catch (error) {
-        console.error('Error fetching follow requests:', error)
-        setError('Failed to load follow requests')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchRequests()
-  }, [])
 
   const handleRequestAction = async (requestId: number, action: 'accept' | 'decline', requesterName: string) => {
     try {
       setProcessing(prev => new Set(prev).add(requestId))
-      
+
       const result = await safeApiCall(
         () => fetch(`/api/follow-requests/${requestId}`, {
           method: 'PATCH',
@@ -80,10 +33,10 @@ export default function RequestsCard({ className = "", variant = 'full' }: Reque
         }),
         `Failed to ${action} follow request`
       )
-      
+
       if (result.success) {
-        // Remove the request from the list
-        setRequests(prev => prev.filter(req => req.id !== requestId))
+        // Optimistic update via context
+        updateFollowRequest(requestId, action)
         toast.success(`Follow request ${action === 'accept' ? 'accepted' : 'declined'} successfully`)
       } else {
         toast.error(result.error || `Failed to ${action} follow request`)
@@ -105,7 +58,7 @@ export default function RequestsCard({ className = "", variant = 'full' }: Reque
     const now = new Date()
     const diffTime = Math.abs(now.getTime() - date.getTime())
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
+
     if (diffDays === 1) {
       return 'yesterday'
     } else if (diffDays < 7) {
@@ -115,7 +68,7 @@ export default function RequestsCard({ className = "", variant = 'full' }: Reque
     }
   }
 
-  if (loading) {
+  if (followRequestsLoading) {
     return (
       <Card className={`${variant === 'compact' ? 'p-4' : 'p-6'} ${className}`}>
         <div className="flex items-center space-x-2 mb-4">
@@ -139,43 +92,19 @@ export default function RequestsCard({ className = "", variant = 'full' }: Reque
     )
   }
 
-  if (error) {
-    return (
-      <Card className={`${variant === 'compact' ? 'p-4' : 'p-6'} ${className}`}>
-        <div className="flex items-center space-x-2 mb-4">
-          <Users className="w-5 h-5 text-primary" />
-          <h3 className={`${variant === 'compact' ? 'text-sm' : 'text-lg'} font-semibold`}>Requests</h3>
-        </div>
-        <div className="text-center py-8">
-          <div className="text-destructive text-sm">{error}</div>
-          {variant === 'full' && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="mt-2 cursor-pointer"
-              onClick={() => window.location.reload()}
-            >
-              Try Again
-            </Button>
-          )}
-        </div>
-      </Card>
-    )
-  }
-
   return (
     <Card className={`${variant === 'compact' ? 'p-4' : 'p-6'} ${className}`}>
       <div className="flex items-center space-x-2 mb-4">
         <Users className="w-5 h-5 text-primary" />
         <h3 className={`${variant === 'compact' ? 'text-sm' : 'text-lg'} font-semibold`}>Requests</h3>
-        {requests.length > 0 && (
+        {followRequests.length > 0 && (
           <Badge variant="secondary" className="ml-2">
-            {requests.length}
+            {followRequests.length}
           </Badge>
         )}
       </div>
-      
-      {requests.length === 0 ? (
+
+      {followRequests.length === 0 ? (
         <div className="text-center py-8">
           <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
             <UserPlus className="w-8 h-8 text-muted-foreground" />
@@ -189,7 +118,7 @@ export default function RequestsCard({ className = "", variant = 'full' }: Reque
         </div>
       ) : (
         <div className="space-y-4 max-h-96 overflow-y-auto">
-          {requests.map((request) => (
+          {followRequests.map((request) => (
             <div key={request.id} className={`${variant === 'compact' ? 'p-2' : 'p-3'} rounded-lg hover:bg-muted/50 transition-colors border border-border/50`}>
               <div className="flex items-start space-x-3">
                 <div className="relative">
@@ -205,7 +134,7 @@ export default function RequestsCard({ className = "", variant = 'full' }: Reque
                     </div>
                   )}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <h4 className="font-medium text-sm">{request.requesterName}</h4>
@@ -216,13 +145,13 @@ export default function RequestsCard({ className = "", variant = 'full' }: Reque
                       </span>
                     </div>
                   </div>
-                  
+
                   {variant === 'full' && (
                     <p className="text-xs text-muted-foreground mb-3">
                       Wants to follow you
                     </p>
                   )}
-                  
+
                   <div className="flex space-x-2">
                     <Button
                       size="sm"
@@ -239,7 +168,7 @@ export default function RequestsCard({ className = "", variant = 'full' }: Reque
                         </>
                       )}
                     </Button>
-                    
+
                     <Button
                       size="sm"
                       variant="outline"

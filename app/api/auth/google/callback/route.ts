@@ -9,10 +9,12 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get('error');
 
     if (error) {
-      return NextResponse.redirect(new URL('/product/auth?error=oauth_error', request.url));
+      console.error('Google Callback Error (Query Param):', error);
+      return NextResponse.redirect(new URL(`/product/auth?error=oauth_error&details=${error}`, request.url));
     }
 
     if (!code) {
+      console.error('Google Callback Error: No code provided');
       return NextResponse.redirect(new URL('/product/auth?error=no_code', request.url));
     }
 
@@ -32,6 +34,8 @@ export async function GET(request: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
+      const text = await tokenResponse.text();
+      console.error('Google Token Exchange Failed:', text);
       return NextResponse.redirect(new URL('/product/auth?error=token_exchange_failed', request.url));
     }
 
@@ -46,6 +50,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!userResponse.ok) {
+      console.error('Google User Info Failed');
       return NextResponse.redirect(new URL('/product/auth?error=user_info_failed', request.url));
     }
 
@@ -53,6 +58,7 @@ export async function GET(request: NextRequest) {
     const { id: googleId, email, name, picture } = googleUser;
 
     if (!email) {
+      console.error('Google User missing email');
       return NextResponse.redirect(new URL('/product/auth?error=no_email', request.url));
     }
 
@@ -94,16 +100,16 @@ export async function GET(request: NextRequest) {
 
     // Check user's onboarding and invite status to determine redirect
     let redirectUrl = '/product/auth';
-    
+
     try {
       // Check if user has sent invites first
       const invitesResponse = await pool.query(
         'SELECT COUNT(*) as invite_count FROM invites WHERE sender_id = $1',
         [userData.id]
       );
-      
+
       const hasSentInvites = invitesResponse.rows.length > 0 && parseInt(invitesResponse.rows[0].invite_count) > 0;
-      
+
       if (!hasSentInvites) {
         // User hasn't sent invites, go to invite page first
         redirectUrl = '/product/invite';
@@ -113,9 +119,9 @@ export async function GET(request: NextRequest) {
           'SELECT onboarding_completed FROM user_preferences WHERE user_id = $1',
           [userData.id]
         );
-        
+
         const hasCompletedOnboarding = prefsResponse.rows.length > 0 && prefsResponse.rows[0].onboarding_completed;
-        
+
         if (!hasCompletedOnboarding) {
           // User sent invites but hasn't completed onboarding
           redirectUrl = '/product/onboarding';
@@ -126,18 +132,20 @@ export async function GET(request: NextRequest) {
       }
     } catch (error) {
       // Default to invite page if we can't determine state
+      console.error('Error determining redirect state:', error);
       redirectUrl = '/product/invite';
     }
 
     // Create response with redirect
     const response = NextResponse.redirect(new URL(redirectUrl, request.url));
-    
+
     // Set cookie
     setTokenCookie(response, token);
 
     return response;
 
   } catch (error: any) {
+    console.error('Google Callback Fatal Error:', error);
     return NextResponse.redirect(new URL('/product/auth?error=server_error', request.url));
   }
 }
