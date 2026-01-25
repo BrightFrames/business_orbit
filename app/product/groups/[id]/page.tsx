@@ -85,14 +85,19 @@ export default function GroupDetailsPage() {
       ; (async () => {
         try {
           setChatLoading(true)
+          console.log('[GroupChat] Loading messages for group:', params.id, 'user:', user.id)
           const res = await fetch(`/api/secret-groups/${params.id}/messages?limit=50`, { credentials: 'include' })
+          console.log('[GroupChat] Response status:', res.status)
           if (res.ok) {
             const data = await res.json()
+            console.log('[GroupChat] Loaded messages:', data.messages?.length || 0)
             setMessages(Array.isArray(data.messages) ? data.messages : [])
             setChatCursor(data?.nextCursor || null)
             // scroll to bottom
             setTimeout(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight }) }, 0)
           } else {
+            const errorData = await res.json().catch(() => ({}))
+            console.error('[GroupChat] Error response:', res.status, errorData)
             setMessages([])
             setChatCursor(null)
           }
@@ -162,6 +167,38 @@ export default function GroupDetailsPage() {
       socketRef.current = null;
     };
   }, [params?.id, user?.id, GROUP_CHAT_WS_URL])
+
+  // Auto-refresh messages polling fallback when WebSocket is not connected
+  useEffect(() => {
+    if (!params?.id || !user?.id) return
+
+    const refreshMessages = async () => {
+      // Only refresh if WebSocket is not connected (fallback polling)
+      if (socketRef.current?.connected) return
+
+      try {
+        const res = await fetch(`/api/secret-groups/${params.id}/messages?limit=50`, { credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          const newMessages = Array.isArray(data.messages) ? data.messages : []
+          setMessages(prev => {
+            // Only update if there are actually new messages
+            if (newMessages.length !== prev.length ||
+              (newMessages.length > 0 && prev.length > 0 && newMessages[newMessages.length - 1]?.id !== prev[prev.length - 1]?.id)) {
+              return newMessages
+            }
+            return prev
+          })
+        }
+      } catch (e) {
+        console.error('Auto-refresh messages error', e)
+      }
+    }
+
+    // Poll every 3 seconds
+    const interval = setInterval(refreshMessages, 3000)
+    return () => clearInterval(interval)
+  }, [params?.id, user?.id])
 
   const handleSend = async () => {
     const text = newText.trim()

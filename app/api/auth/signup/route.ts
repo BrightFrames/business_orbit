@@ -285,7 +285,7 @@ export async function POST(request: NextRequest) {
         createdAt: user.created_at,
         emailVerified: user.email_verified || false,
         location: user.location || 'Not specified',
-        rewardScore: user.reward_score || 85,
+        rewardScore: user.orbit_points || 0,
         mutualConnections: user.mutual_connections || 0,
         isPremium: user.is_premium || false
       },
@@ -361,7 +361,7 @@ export async function POST(request: NextRequest) {
             interest: user.interest,
             createdAt: user.created_at,
             location: user.location || 'Not specified',
-            rewardScore: user.reward_score || 85,
+            rewardScore: user.orbit_points || 0,
             mutualConnections: user.mutual_connections || 0,
             isPremium: user.is_premium || false
           }

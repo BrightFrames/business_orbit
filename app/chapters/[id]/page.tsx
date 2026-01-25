@@ -87,79 +87,37 @@ export default function ChapterPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState<boolean>(false)
   const messagesContainerRef = (globalThis as any).__messagesContainerRef as { current: HTMLDivElement | null } || { current: null }
-  ;(globalThis as any).__messagesContainerRef = messagesContainerRef
+    ; (globalThis as any).__messagesContainerRef = messagesContainerRef
   const [input, setInput] = useState<string>("")
   const [connecting, setConnecting] = useState<boolean>(true)
   const [connectionError, setConnectionError] = useState<string>("")
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
   const fileInputRef = (globalThis as any).__chapterFileInputRef as { current: HTMLInputElement | null } || { current: null }
-  ;(globalThis as any).__chapterFileInputRef = fileInputRef
+    ; (globalThis as any).__chapterFileInputRef = fileInputRef
   const socketRef = (globalThis as any).__chapterSocketRef as { current: Socket | null } || { current: null }
-  ;(globalThis as any).__chapterSocketRef = socketRef
-  
+    ; (globalThis as any).__chapterSocketRef = socketRef
+
   const fetchingMembersRef = (globalThis as any).__fetchingMembersRef as { current: boolean } || { current: false }
-  ;(globalThis as any).__fetchingMembersRef = fetchingMembersRef
+    ; (globalThis as any).__fetchingMembersRef = fetchingMembersRef
   // Chat server endpoints: separate HTTP base and WS base
   const CHAT_HTTP_URL = process.env.NEXT_PUBLIC_CHAT_SOCKET_URL || 'http://localhost:4000'
   const CHAT_WS_URL = CHAT_HTTP_URL.replace(/^http/, 'ws')
   const [onlineCount, setOnlineCount] = useState<number>(0)
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
-  
+
   // Follow functionality state
   const [followStatus, setFollowStatus] = useState<Record<number, 'following' | 'pending' | 'not-following'>>({})
   const [followLoading, setFollowLoading] = useState<Record<number, boolean>>({})
-  
+
   // Events state
   const [upcomingEvents, setUpcomingEvents] = useState<ChapterEvent[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
   const [lastEventsUpdate, setLastEventsUpdate] = useState<Date | null>(null)
 
-  // Mock data for posts, events, and contributors (can be replaced with real APIs later)
-  const chapterPosts: ChapterPost[] = [
-  {
-    author: {
-      name: "Rajesh Kumar",
-      role: "Tech Lead",
-      avatar: "RK",
-      rewardScore: 88,
-    },
-      content: "Excited to announce our upcoming AI workshop next week! We'll be covering practical applications of machine learning in product development. Who's interested in joining?",
-    timestamp: "3h ago",
-    engagement: {
-      likes: 15,
-      comments: 8,
-      shares: 2,
-    },
-  },
-  {
-    author: {
-      name: "Priya Sharma",
-      role: "Product Manager",
-      avatar: "PS",
-      rewardScore: 92,
-    },
-      content: "Great networking session yesterday! Connected with some amazing founders working on fintech solutions. The startup ecosystem is truly thriving.",
-    timestamp: "1d ago",
-    engagement: {
-      likes: 23,
-      comments: 6,
-      shares: 4,
-    },
-  },
-]
-
-
-  const topContributors: TopContributor[] = [
-  { name: "Sarah Chen", role: "Product Manager", score: 95, avatar: "SC" },
-  { name: "Michael Rodriguez", role: "Tech Lead", score: 88, avatar: "MR" },
-  { name: "Priya Sharma", role: "Marketing Director", score: 92, avatar: "PS" },
-  { name: "Alex Thompson", role: "UX Designer", score: 85, avatar: "AT" },
-]
-
   // Helper function to format membership date
   const formatMembershipDate = (dateString: string | null | undefined): string => {
     if (!dateString) return "Member"
-    
+
     try {
       const date = new Date(dateString)
       const month = date.toLocaleString('default', { month: 'short' })
@@ -186,7 +144,7 @@ export default function ChapterPage() {
         const data = chaptersResult.data as any
         const chapters = data.chapters || []
         const chapter = chapters.find((c: any) => c.id === params.id)
-        
+
         if (chapter) {
           // Fetch user's membership date for this chapter
           let joinedAt = "Member"
@@ -195,7 +153,7 @@ export default function ChapterPage() {
               () => fetch(`/api/chapters/${params.id}/membership`, { credentials: 'include' }),
               'Failed to fetch membership date'
             )
-            
+
             if (membershipResult.success && membershipResult.data && typeof membershipResult.data === 'object' && membershipResult.data !== null) {
               const membershipData = membershipResult.data as any
               if (membershipData.joined_at) {
@@ -253,7 +211,7 @@ export default function ChapterPage() {
         const data = result.data as any
         const members = data.members || []
         setChapterMembers(members)
-        
+
         // Update member count in chapterData to reflect actual number of members
         setChapterData(prev => {
           if (prev) {
@@ -283,9 +241,9 @@ export default function ChapterPage() {
   // Follow functionality
   const handleFollow = async (memberId: number, memberName: string) => {
     if (!user || user.id === memberId) return
-    
+
     setFollowLoading(prev => ({ ...prev, [memberId]: true }))
-    
+
     try {
       const response = await fetch('/api/follow', {
         method: 'POST',
@@ -298,9 +256,9 @@ export default function ChapterPage() {
           action: 'follow'
         })
       })
-      
+
       const data = await response.json()
-      
+
       if (data.success) {
         setFollowStatus(prev => ({ ...prev, [memberId]: 'pending' }))
         toast.success(data.message || `Follow request sent to ${memberName}`)
@@ -317,9 +275,9 @@ export default function ChapterPage() {
 
   const handleUnfollow = async (memberId: number, memberName: string) => {
     if (!user || user.id === memberId) return
-    
+
     setFollowLoading(prev => ({ ...prev, [memberId]: true }))
-    
+
     try {
       const response = await fetch('/api/follow', {
         method: 'POST',
@@ -332,9 +290,9 @@ export default function ChapterPage() {
           action: 'unfollow'
         })
       })
-      
+
       const data = await response.json()
-      
+
       if (data.success) {
         setFollowStatus(prev => ({ ...prev, [memberId]: 'not-following' }))
         toast.success(data.message || `Unfollowed ${memberName}`)
@@ -368,7 +326,7 @@ export default function ChapterPage() {
         const response = await fetch(`/api/follow?checkStatus=true&userIds=${memberIds}`, {
           credentials: 'include'
         })
-        
+
         if (response.ok) {
           const data = await response.json()
           if (data.success && data.followStatus) {
@@ -385,8 +343,8 @@ export default function ChapterPage() {
   const fetchUpcomingEvents = async (forceRefresh = false) => {
     // Skip refresh if already loading and not forced
     if (eventsLoading && !forceRefresh) return
-    
-      setEventsLoading(true)
+
+    setEventsLoading(true)
     try {
       // Include user ID in query for better filtering (RSVP status)
       const url = user?.id ? `/api/events?userId=${user.id}&limit=8` : '/api/events?limit=8'
@@ -396,10 +354,10 @@ export default function ChapterPage() {
           'Cache-Control': forceRefresh ? 'no-cache' : 'default'
         }
       })
-      
+
       if (response.ok) {
         const events = await response.json()
-        
+
         // Filter upcoming events, sort by date, and limit to 5 (showing more relevant events)
         const now = new Date()
         const upcoming = events
@@ -430,10 +388,10 @@ export default function ChapterPage() {
               venue_address: event.venue_address
             }
           })
-        
+
         setUpcomingEvents(upcoming)
         setLastEventsUpdate(new Date())
-        
+
         // Show a subtle success message only for manual refreshes
         if (forceRefresh) {
           toast.success(`Events updated - ${upcoming.length} upcoming event${upcoming.length === 1 ? '' : 's'} found`)
@@ -468,7 +426,7 @@ export default function ChapterPage() {
       const timeoutId = setTimeout(() => {
         fetchChapterMembers()
       }, 100)
-      
+
       return () => clearTimeout(timeoutId)
     }
   }, [chapterData?.id]) // Only depend on chapterData.id to avoid infinite loops
@@ -545,7 +503,7 @@ export default function ChapterPage() {
       })
 
       const data = await response.json()
-      
+
       if (data.success) {
         toast.success(`Successfully RSVP'd to ${eventTitle}`)
         // Refresh events to update RSVP status
@@ -598,11 +556,11 @@ export default function ChapterPage() {
   // Connect websocket (optional - only if chat server is available)
   useEffect(() => {
     if (!params.id || authLoading) return
-    
+
     // Check if chat server is available first
     const checkChatServer = async () => {
       try {
-        const response = await fetch(`${CHAT_HTTP_URL}/health`, { 
+        const response = await fetch(`${CHAT_HTTP_URL}/health`, {
           method: 'GET',
           signal: AbortSignal.timeout(3000) // 3 second timeout
         })
@@ -632,8 +590,8 @@ export default function ChapterPage() {
           rememberUpgrade: true
         })
         socketRef.current = s
-        
-        s.off('connect').on('connect', () => { 
+
+        s.off('connect').on('connect', () => {
           setConnecting(false)
           setConnectionError("")
           // Join room on successful connect
@@ -649,25 +607,25 @@ export default function ChapterPage() {
             })
           }
         })
-        
+
         s.off('disconnect').on('disconnect', () => {
           setConnecting(true)
         })
-        
+
         s.off('connect_error').on('connect_error', (error: any) => {
           setConnectionError('')
           setConnecting(false)
         })
-        
+
         // Message handling
         s.off('newMessage').on('newMessage', (msg: ChatMessage) => {
           if (String(msg.chapterId) === String(params.id)) {
             setMessages(prev => {
               const exists = prev.some(m => m.id === msg.id)
               if (exists) return prev
-              const optimisticIndex = prev.findIndex(m => 
-                m.content === msg.content && 
-                m.senderId === msg.senderId && 
+              const optimisticIndex = prev.findIndex(m =>
+                m.content === msg.content &&
+                m.senderId === msg.senderId &&
                 m.id.startsWith('tmp-')
               )
               if (optimisticIndex !== -1) {
@@ -679,16 +637,16 @@ export default function ChapterPage() {
             })
           }
         })
-        
+
         s.off('presence').on('presence', (p: { count: number }) => {
           setOnlineCount(p?.count || 0)
         })
-        
+
         s.off('typing').on('typing', ({ userId }: { userId: string }) => {
           if (String(userId) === String(user?.id)) return
           setTypingUsers(prev => new Set([...prev, String(userId)]))
         })
-        
+
         s.off('stopTyping').on('stopTyping', ({ userId }: { userId: string }) => {
           setTypingUsers(prev => {
             const newSet = new Set(prev)
@@ -719,7 +677,7 @@ export default function ChapterPage() {
   // Auto-refresh messages in HTTP-only mode
   useEffect(() => {
     if (socketRef.current?.connected) return // Don't auto-refresh if WebSocket is connected
-    
+
     const interval = setInterval(() => {
       // Only refresh if we're not currently loading and have messages
       if (!loadingMore && messages.length > 0) {
@@ -749,10 +707,10 @@ export default function ChapterPage() {
   const sendMessage = async () => {
     const text = input.trim()
     if (!text || !user?.id || !params.id) return
-    
+
     // Generate a unique ID for this message
     const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    
+
     const msg: ChatMessage = {
       id: tempId,
       chapterId: String(params.id),
@@ -762,9 +720,9 @@ export default function ChapterPage() {
       content: text,
       timestamp: new Date().toISOString()
     }
-    
+
     setInput("")
-    
+
     // Optimistic update
     setMessages(prev => [...prev, msg])
     // Use app API by default, WebSocket if available
@@ -834,10 +792,10 @@ export default function ChapterPage() {
       }
       // Stop typing after idle
       clearTimeout((onInput as any)._t)
-      ;(onInput as any)._t = setTimeout(() => {
-        typing = false
-        socketRef.current?.emit('stopTyping')
-      }, 2000)
+        ; (onInput as any)._t = setTimeout(() => {
+          typing = false
+          socketRef.current?.emit('stopTyping')
+        }, 2000)
     }
     inputEl.addEventListener('input', onInput)
     return () => {
@@ -978,9 +936,9 @@ export default function ChapterPage() {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-3 sm:mb-4 space-y-3 sm:space-y-4 lg:space-y-0">
             <div className="min-w-0 flex-1">
               <div className="flex items-center mb-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => router.push('/product/chapters')}
                   className="mr-2 flex-shrink-0"
                 >
@@ -1036,14 +994,14 @@ export default function ChapterPage() {
                     <div key={m.id} className={`flex ${own ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[85%] sm:max-w-[80%] flex items-end gap-1.5 sm:gap-2 ${own ? 'flex-row-reverse' : 'flex-row'}`}>
                         <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold flex-shrink-0">
-                          {(m.senderName || 'U').slice(0,2).toUpperCase()}
+                          {(m.senderName || 'U').slice(0, 2).toUpperCase()}
                         </div>
                         <div className={`rounded-2xl px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm ${own ? 'bg-primary text-primary-foreground' : 'bg-white'}`}>
                           <div className="text-[10px] sm:text-[11px] opacity-80 mb-0.5">{own ? 'You' : m.senderName}</div>
                           <div className="whitespace-pre-wrap break-words text-xs sm:text-sm">{m.content}</div>
                           <div className="flex items-center justify-between mt-1">
-                            <div className="text-[9px] sm:text-[10px] opacity-70">{new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                            
+                            <div className="text-[9px] sm:text-[10px] opacity-70">{new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+
                           </div>
                         </div>
                       </div>
@@ -1059,7 +1017,7 @@ export default function ChapterPage() {
                   </Button>
                   {showEmojiPicker && (
                     <div className="absolute bottom-12 left-0 z-20 bg-white border rounded-lg shadow-md p-2 w-48 sm:w-56 grid grid-cols-8 gap-1">
-                      {['😀','😁','😂','🤣','😊','😍','😎','😇','😉','🙃','🤔','🤩','😢','😭','😡','👍','🙏','👏','🎉','🔥','💡','✨','✅','❌','❤️','💪','🤝','🚀','🌟','📎','📣'].map(e => (
+                      {['😀', '😁', '😂', '🤣', '😊', '😍', '😎', '😇', '😉', '🙃', '🤔', '🤩', '😢', '😭', '😡', '👍', '🙏', '👏', '🎉', '🔥', '💡', '✨', '✅', '❌', '❤️', '💪', '🤝', '🚀', '🌟', '📎', '📣'].map(e => (
                         <button key={e} className="text-lg sm:text-xl hover:scale-110 transition" onClick={() => { appendEmoji(e); setShowEmojiPicker(false) }} aria-label={`emoji ${e}`}>
                           {e}
                         </button>
@@ -1071,19 +1029,19 @@ export default function ChapterPage() {
                   <Button type="button" variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-10 sm:w-10" onClick={handleAttachClick}>
                     <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
-                <Input
-                  id="chapter-chat-input"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type your message..."
-                  className="flex-1 text-sm sm:text-base"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      sendMessage()
-                    }
-                  }}
-                />
+                  <Input
+                    id="chapter-chat-input"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Type your message..."
+                    className="flex-1 text-sm sm:text-base"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        sendMessage()
+                      }
+                    }}
+                  />
                   <Button type="button" onClick={sendMessage} disabled={!input.trim()} className="shrink-0 h-8 px-2 sm:h-10 sm:px-3 text-xs sm:text-sm">
                     <Send className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                     <span className="hidden sm:inline">Send</span>
@@ -1110,8 +1068,8 @@ export default function ChapterPage() {
                     <div key={member.id} className="flex items-center space-x-2 sm:space-x-3">
                       <div className="w-6 h-6 sm:w-8 sm:h-8 bg-muted rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0">
                         {member.profile_photo_url ? (
-                          <img 
-                            src={member.profile_photo_url} 
+                          <img
+                            src={member.profile_photo_url}
                             alt={member.name}
                             className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover"
                           />
@@ -1174,7 +1132,7 @@ export default function ChapterPage() {
                               )}
                             </Button>
                           )}
-                          
+
                           {/* Create Secret Group button */}
                           <Button
                             size="sm"
@@ -1244,13 +1202,13 @@ export default function ChapterPage() {
                             </Badge>
                           )}
                         </div>
-                        
+
                         {event.description && (
                           <p className="text-xs text-muted-foreground line-clamp-2">
                             {event.description}
                           </p>
                         )}
-                        
+
                         <div className="flex flex-col space-y-1">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground gap-1 sm:gap-0">
                             <span className="flex items-center">
@@ -1262,27 +1220,27 @@ export default function ChapterPage() {
                               <span className="truncate">{event.attendees} attending</span>
                             </span>
                           </div>
-                          
+
                           {event.venue_address && event.event_type === 'physical' && (
                             <div className="flex items-start text-xs text-muted-foreground">
                               <MapPin className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                               <span className="line-clamp-2">{event.venue_address}</span>
                             </div>
                           )}
-                          
+
                           {event.event_type === 'online' && (
                             <span className="text-xs text-blue-600 font-medium">
                               Online Event
                             </span>
                           )}
-                          
+
                           {event.event_type === 'physical' && (
                             <span className="text-xs text-green-600 font-medium">
                               Physical Event
                             </span>
                           )}
                         </div>
-                        
+
                         {user && !event.is_registered && (
                           <Button
                             size="sm"
@@ -1298,8 +1256,8 @@ export default function ChapterPage() {
                 )}
               </div>
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-3 sm:mt-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="flex-1 bg-transparent text-xs sm:text-sm lg:text-base"
                   onClick={() => router.push('/events')}
                 >

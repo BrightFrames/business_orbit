@@ -251,9 +251,11 @@ export default function FeedPost({ post, onEngagementChange, onPostDeleted }: Fe
           >
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-gray-900">{post.user_name}</h3>
-              <div className="w-8 h-5 bg-gray-200 rounded-full flex items-center justify-center">
-                <span className="text-xs font-medium text-gray-600">85</span>
-              </div>
+              {post.rewardScore && post.rewardScore > 0 && (
+                <div className="w-8 h-5 bg-gray-200 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-gray-600">{post.rewardScore}</span>
+                </div>
+              )}
             </div>
             <p className="text-sm text-gray-500">{post.profession || 'Professional'}</p>
             <p className="text-xs text-gray-400">{formatTimeAgo(post.published_at || post.created_at)}</p>

@@ -130,6 +130,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log('[SecretGroupMessage] GET - User:', user.id, 'GroupId:', groupId);
+
     const client = await pool.connect();
     try {
       // Check membership
@@ -145,7 +147,10 @@ export async function GET(
       const isAdmin = groupAdmin.rows[0]?.admin_id === user.id;
       const isMember = membership.rowCount && membership.rowCount > 0;
 
+      console.log('[SecretGroupMessage] GET - isMember:', isMember, 'isAdmin:', isAdmin, 'admin_id:', groupAdmin.rows[0]?.admin_id);
+
       if (!isMember && !isAdmin) {
+        console.log('[SecretGroupMessage] GET - Forbidden for user:', user.id);
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
 
@@ -166,6 +171,8 @@ export async function GET(
          LIMIT 50`,
         [groupId]
       );
+
+      console.log('[SecretGroupMessage] GET - Returning', messages.rows.length, 'messages');
 
       return NextResponse.json({
         success: true,

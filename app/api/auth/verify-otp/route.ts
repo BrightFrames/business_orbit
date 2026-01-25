@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
                         createdAt: user.created_at,
                         emailVerified: true,
                         location: 'Not specified',
-                        rewardScore: 85,
+                        rewardScore: 0,
                         mutualConnections: 0,
                         isPremium: false
                     }

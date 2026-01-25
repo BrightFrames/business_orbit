@@ -62,47 +62,14 @@ const userGroupsDefault: GroupItem[] = [
   },
 ]
 
+// TODO: Replace with real data from selected group API
 const activeGroupData = {
   id: "ai-ml",
   name: "AI/ML Enthusiasts",
   description: "Discussing the latest in artificial intelligence and machine learning",
   members: 89,
-  admins: ["Sarah Chen", "Michael Rodriguez"],
+  admins: [] as string[], // Fetched dynamically when a group is selected
 }
-const groupPosts = [
-  {
-    author: {
-      name: "David Kim",
-      role: "ML Engineer",
-      avatar: "DK",
-      rewardScore: 91,
-    },
-    content:
-      "Just published a paper on transformer architectures for time series forecasting. The results are promising - 15% improvement over traditional LSTM approaches. Would love to get feedback from the community!",
-    timestamp: "2h ago",
-    engagement: {
-      likes: 28,
-      comments: 12,
-      shares: 5,
-    },
-  },
-  {
-    author: {
-      name: "Lisa Zhang",
-      role: "Data Scientist",
-      avatar: "LZ",
-      rewardScore: 87,
-    },
-    content:
-      "Question for the group: What's your preferred approach for handling imbalanced datasets in production? I've been experimenting with SMOTE vs focal loss and curious about your experiences.",
-    timestamp: "5h ago",
-    engagement: {
-      likes: 19,
-      comments: 8,
-      shares: 2,
-    },
-  },
-]
 
 export default function GroupsPage() {
   const [activeGroup, setActiveGroup] = useState("ai-ml")
@@ -159,44 +126,44 @@ export default function GroupsPage() {
 
   React.useEffect(() => {
     if (!showAddMembers) return
-    ;(async () => {
-      try {
-        setUsersLoading(true)
-        // Load all possible connections
-        const res = await fetch('/api/members', { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
-          const members: SimpleUser[] = Array.isArray(data?.members)
-            ? (data.members as any[]).map((m) => ({ id: Number(m.id), name: String(m.name || ''), email: String(m.email || '') }))
-            : []
-          setAllUsers(members)
-        } else {
-          setAllUsers([])
-        }
+      ; (async () => {
+        try {
+          setUsersLoading(true)
+          // Load all possible connections
+          const res = await fetch('/api/members', { credentials: 'include' })
+          if (res.ok) {
+            const data = await res.json()
+            const members: SimpleUser[] = Array.isArray(data?.members)
+              ? (data.members as any[]).map((m) => ({ id: Number(m.id), name: String(m.name || ''), email: String(m.email || '') }))
+              : []
+            setAllUsers(members)
+          } else {
+            setAllUsers([])
+          }
 
-        // Load current members of the target group to mark as Added
-        if (targetGroupId) {
-          try {
-            const res2 = await fetch(`/api/admin/management/secret-groups/${encodeURIComponent(targetGroupId)}/members`, { credentials: 'include' })
-            if (res2.ok) {
-              const data2 = await res2.json()
-              const ids = new Set<number>(
-                Array.isArray(data2?.members) ? data2.members.map((u: any) => Number(u.id)) : []
-              )
-              setCurrentMemberIds(ids)
-            } else {
+          // Load current members of the target group to mark as Added
+          if (targetGroupId) {
+            try {
+              const res2 = await fetch(`/api/admin/management/secret-groups/${encodeURIComponent(targetGroupId)}/members`, { credentials: 'include' })
+              if (res2.ok) {
+                const data2 = await res2.json()
+                const ids = new Set<number>(
+                  Array.isArray(data2?.members) ? data2.members.map((u: any) => Number(u.id)) : []
+                )
+                setCurrentMemberIds(ids)
+              } else {
+                setCurrentMemberIds(new Set())
+              }
+            } catch {
               setCurrentMemberIds(new Set())
             }
-          } catch {
+          } else {
             setCurrentMemberIds(new Set())
           }
-        } else {
-          setCurrentMemberIds(new Set())
+        } finally {
+          setUsersLoading(false)
         }
-      } finally {
-        setUsersLoading(false)
-      }
-    })()
+      })()
   }, [showAddMembers, targetGroupId])
 
   const filteredUsers = React.useMemo(() => {
@@ -241,7 +208,7 @@ export default function GroupsPage() {
       setJoinedGroups(joined.length ? joined : [])
       setSuggestedGroups(suggested)
       if (joined.length) setActiveGroup(joined[0].id)
-    } catch {}
+    } catch { }
   }, [user?.id])
 
   React.useEffect(() => { loadData() }, [loadData])
@@ -256,7 +223,7 @@ export default function GroupsPage() {
       if (res.ok) {
         await loadData()
       }
-    } catch {}
+    } catch { }
   }
 
   const toggleConnection = (id: string) => {
@@ -292,7 +259,7 @@ export default function GroupsPage() {
       setInviteEmails("")
       setSelectedConnections([])
       await loadData()
-    } catch {}
+    } catch { }
   }
 
   // Events state for secret groups page
