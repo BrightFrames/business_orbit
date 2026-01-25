@@ -43,11 +43,12 @@ class GroupChatService {
     const mediaUrl = message.mediaUrl || null;
     const metadata = message.metadata || {};
 
+    // Only insert columns that exist in the base table schema
     const result = await pool.query(
-      `INSERT INTO secret_group_messages (group_id, sender_id, content, message_type, media_url, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO secret_group_messages (group_id, sender_id, content)
+       VALUES ($1, $2, $3)
        RETURNING id, created_at`,
-      [message.groupId, message.senderId, message.content, type, mediaUrl, metadata]
+      [message.groupId, message.senderId, message.content]
     )
 
     const meta = await pool.query('SELECT name, profile_photo_url FROM users WHERE id = $1', [message.senderId])
@@ -83,13 +84,10 @@ class GroupChatService {
         u.name as "senderName",
         u.profile_photo_url as "senderAvatarUrl",
         gm.content,
-        gm.message_type as "messageType",
-        gm.media_url as "mediaUrl",
-        gm.metadata,
         gm.created_at as timestamp
       FROM secret_group_messages gm
       JOIN users u ON u.id = gm.sender_id
-      WHERE gm.group_id = $1 AND gm.is_archived = FALSE
+      WHERE gm.group_id = $1
     `
     const params: any[] = [groupId]
     if (cursor) { query += ` AND gm.created_at < $2`; params.push(cursor) }
