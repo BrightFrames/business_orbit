@@ -3,39 +3,67 @@ import { NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const host = request.headers.get('host') || '';
+
+  // Detect admin subdomain
+  const isAdminSubdomain = host.startsWith('admin.') || host.includes('admin.localhost');
+
+  // ============================================
+  // ADMIN SUBDOMAIN RULES
+  // ============================================
+  if (isAdminSubdomain) {
+    // Allow static assets, API routes, and Next.js internals
+    const systemPaths = ['/_next', '/favicon', '/api'];
+    const isSystemPath = systemPaths.some(p => pathname.startsWith(p));
+
+    if (isSystemPath) {
+      return NextResponse.next();
+    }
+
+    // Allow only admin routes on admin subdomain
+    const adminPaths = ['/product/admin'];
+    const isAdminPath = adminPaths.some(p => pathname.startsWith(p));
+
+    // Redirect root to admin dashboard
+    if (pathname === '/' || pathname === '') {
+      return NextResponse.redirect(new URL('/product/admin', request.url));
+    }
+
+    // Block non-admin routes on admin subdomain
+    if (!isAdminPath) {
+      return NextResponse.rewrite(new URL('/not-found', request.url));
+    }
+
+    // Admin auth check - admin pages handle their own auth
+    return NextResponse.next();
+  }
+
+  // ============================================
+  // MAIN DOMAIN RULES
+  // ============================================
+
+  // Block admin routes on main domain - return 404
+  if (pathname.startsWith('/product/admin') || pathname.startsWith('/admin')) {
+    return NextResponse.rewrite(new URL('/not-found', request.url));
+  }
 
   // 1) Auth gate for product pages and profile
   if (pathname.startsWith('/product') || pathname.startsWith('/profile')) {
     const token = request.cookies.get('token')?.value;
     // Public marketing routes under /product (do NOT require auth)
-    // Use exact match for /product and /product/, but startsWith for /product/auth
     const isPublic =
       pathname === '/product' ||
       pathname === '/product/' ||
       pathname.startsWith('/product/auth');
 
-
-    // Admin routes are protected by the admin page component itself
-    // No middleware redirect needed - let the page handle authentication
-
-    // NOTE: We do NOT redirect from /product/auth to /product/profile here even if token exists
-    // because the token might be invalid/expired. The auth page component handles this
-    // client-side after validating the token via /api/bootstrap.
-
     if (!isPublic && !token) {
       const url = new URL('/product/auth', request.url);
-      // Optional: include return path
       url.searchParams.set('redirect', pathname + search);
       return NextResponse.redirect(url);
     }
   }
 
-  // 2) Handle /admin route - redirect to auth page for security
-  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
-    return NextResponse.redirect(new URL('/product/auth?admin=true', request.url));
-  }
-
-  // 3) 404 for specific root paths and their subpaths (keep product versions only)
+  // 2) 404 for specific root paths and their subpaths (keep product versions only)
   const rootSegmentsTo404 = new Set([
     'auth',
     'invite',
@@ -43,11 +71,10 @@ export function middleware(request: NextRequest) {
     'subscription',
     'connections',
     'navigator',
-    'reward', // changed from rewards to keep some protection if needed
+    'reward',
     'feed',
   ]);
 
-  // If path is not under /product and first segment is one of the 404 targets, rewrite to not-found
   if (!pathname.startsWith('/product/')) {
     const firstSeg = pathname.split('/')[1] || '';
     if (rootSegmentsTo404.has(firstSeg)) {
@@ -58,13 +85,18 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Only run for these exact root paths
+// Matcher config for middleware
 export const config = {
   matcher: [
+    // Admin routes
     '/admin',
     '/admin/:path*',
+    '/product/admin',
+    '/product/admin/:path*',
+    // Auth routes
     '/auth',
     '/auth/:path*',
+    // Other protected routes
     '/invite',
     '/invite/:path*',
     '/onboarding',
@@ -90,5 +122,8 @@ export const config = {
     '/feed',
     '/feed/:path*',
     '/product/:path*',
+    // Root path for admin subdomain redirect
+    '/',
   ],
 };
+

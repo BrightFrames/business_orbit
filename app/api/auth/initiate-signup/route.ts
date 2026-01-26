@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
 
-        name = formData.get('name') as string;
-        email = formData.get('email') as string;
-        phone = formData.get('phone') as string;
+        name = (formData.get('name') as string)?.trim();
+        email = (formData.get('email') as string)?.trim();
+        phone = (formData.get('phone') as string)?.trim();
         password = formData.get('password') as string;
         confirmPassword = formData.get('confirmPassword') as string;
         skills = formData.get('skills') as string;
@@ -54,7 +54,10 @@ export async function POST(request: NextRequest) {
         banner = formData.get('banner') as File;
 
         // Validation
+        console.log('[InitiateSignup] Received:', { name, email: email?.substring(0, 5) + '***', phone: phone?.substring(0, 4) + '***' });
+
         if (!name || !email || !password || !confirmPassword) {
+            console.log('[InitiateSignup] Missing required fields:', { name: !!name, email: !!email, password: !!password, confirmPassword: !!confirmPassword });
             return NextResponse.json(
                 { error: 'Name, email, password, and confirm password are required' },
                 { status: 400 }
@@ -64,6 +67,7 @@ export async function POST(request: NextRequest) {
         // Email format validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
+            console.log('[InitiateSignup] Invalid email format:', email);
             return NextResponse.json(
                 { error: 'Invalid email format' },
                 { status: 400 }
@@ -71,6 +75,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (password !== confirmPassword) {
+            console.log('[InitiateSignup] Passwords do not match');
             return NextResponse.json(
                 { error: 'Passwords do not match' },
                 { status: 400 }
@@ -78,6 +83,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (password.length < 6) {
+            console.log('[InitiateSignup] Password too short:', password.length);
             return NextResponse.json(
                 { error: 'Password must be at least 6 characters long' },
                 { status: 400 }
@@ -88,6 +94,7 @@ export async function POST(request: NextRequest) {
         if (pool) {
             const existingUser = await pool.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
             if (existingUser.rows.length > 0) {
+                console.log('[InitiateSignup] User already exists:', email);
                 return NextResponse.json(
                     { error: 'User with this email already exists' },
                     { status: 400 }

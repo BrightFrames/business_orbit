@@ -214,25 +214,26 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode = 'signin', setMode }) => {
       }
 
       try {
-        // Call initiate-signup to validate and send OTP
-        const response = await fetch('/api/auth/initiate-signup', {
+        // Direct signup (skip OTP for now)
+        const response = await fetch('/api/auth/signup', {
           method: 'POST',
           body: submitData,
         });
 
         const data = await response.json();
 
-        if (response.ok && data.success) {
-          // Show OTP modal
-          setOtpEmail(data.email);
-          setSessionToken(data.sessionToken);
-          setShowOTPModal(true);
-          toast.success('Verification code sent to your email!');
+        if (response.ok) {
+          toast.success('Account created successfully!');
+          // Refresh auth state to get the new user
+          await checkAuth();
+          // Navigate to feed
+          router.push('/product/feed');
         } else {
-          toast.error(data.error || 'Failed to initiate signup');
+          toast.error(data.error || 'Failed to create account');
         }
       } catch (error) {
         toast.error('Something went wrong. Please try again.');
+        console.error('Signup error:', error);
       }
     }
 

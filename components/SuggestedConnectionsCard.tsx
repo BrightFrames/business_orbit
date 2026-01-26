@@ -77,7 +77,7 @@ export default function SuggestedConnectionsCard({ className = "" }: SuggestedCo
   }
 
   return (
-    <Card className={`p-4 ${className}`}>
+    <Card id="suggested-connections" className={`p-4 ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-sm">Suggested Connections</h3>
         <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">

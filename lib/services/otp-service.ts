@@ -20,9 +20,9 @@ const MAX_ATTEMPTS = 3;
 const SALT_ROUNDS = 10;
 
 // Rate limiting configuration
-const RATE_LIMIT_MAX_REQUESTS = 3; // Max OTP requests per window
+const RATE_LIMIT_MAX_REQUESTS = 10; // Max OTP requests per window
 const RATE_LIMIT_WINDOW_MINUTES = 60; // 1 hour window
-const BLOCK_DURATION_MINUTES = 30; // Block for 30 minutes after abuse
+const BLOCK_DURATION_MINUTES = 5; // Block for 5 minutes after abuse
 
 export type OTPPurpose = 'verify_email' | 'forgot_password' | 'sensitive_action' | 'signup_verification';
 
@@ -164,25 +164,25 @@ export async function createOTP(
     }
 
     // Check rate limits
-    const emailRateLimit = await checkRateLimit(email, 'email');
-    if (!emailRateLimit.allowed) {
-        return {
-            success: false,
-            error: emailRateLimit.message || 'Rate limit exceeded',
-            rateLimitInfo: emailRateLimit
-        };
-    }
+    // const emailRateLimit = await checkRateLimit(email, 'email');
+    // if (!emailRateLimit.allowed) {
+    //     return {
+    //         success: false,
+    //         error: emailRateLimit.message || 'Rate limit exceeded',
+    //         rateLimitInfo: emailRateLimit
+    //     };
+    // }
 
-    if (ipAddress) {
-        const ipRateLimit = await checkRateLimit(ipAddress, 'ip');
-        if (!ipRateLimit.allowed) {
-            return {
-                success: false,
-                error: ipRateLimit.message || 'Rate limit exceeded',
-                rateLimitInfo: ipRateLimit
-            };
-        }
-    }
+    // if (ipAddress) {
+    //     const ipRateLimit = await checkRateLimit(ipAddress, 'ip');
+    //     if (!ipRateLimit.allowed) {
+    //         return {
+    //             success: false,
+    //             error: ipRateLimit.message || 'Rate limit exceeded',
+    //             rateLimitInfo: ipRateLimit
+    //         };
+    //     }
+    // }
 
     const client = await pool.connect();
     try {

@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id: chapterId } = await params
-    
+
     // Validate chapter ID (UUID format)
     if (!chapterId || typeof chapterId !== 'string') {
       return NextResponse.json({
@@ -16,20 +16,20 @@ export async function GET(
         message: 'Chapter ID is required'
       }, { status: 400 })
     }
-    
+
     // Test database connection first
     const client = await pool.connect()
     try {
       const result = await client.query(
-        `SELECT u.id, u.name, u.email, u.profile_photo_url
+        `SELECT u.id, u.name, u.email, u.profile_photo_url, u.orbit_points, u.profession
          FROM chapter_memberships cm
          JOIN users u ON u.id = cm.user_id
          WHERE cm.chapter_id = $1
-         ORDER BY cm.joined_at DESC, u.name`,
+         ORDER BY (u.orbit_points) DESC NULLS LAST, cm.joined_at DESC, u.name`,
         [chapterId]
       )
-      
-      return NextResponse.json({ 
+
+      return NextResponse.json({
         success: true,
         members: result.rows,
         count: result.rows.length
@@ -38,7 +38,7 @@ export async function GET(
       client.release()
     }
   } catch (error: any) {
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
       error: 'Failed to fetch chapter members',
       message: 'Database error occurred while fetching chapter members'

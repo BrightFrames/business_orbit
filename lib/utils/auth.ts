@@ -12,10 +12,15 @@ export const generateToken = (userId: number): string => {
 
 // Helper function to set JWT cookie
 export const setTokenCookie = (res: NextResponse, token: string): void => {
+  // Domain setting for cross-subdomain cookie sharing
+  // In production, use .businessorbit.org to allow admin.businessorbit.org to share cookies
+  const cookieDomain = process.env.NODE_ENV === 'production' ? '.businessorbit.org' : undefined;
+
   res.cookies.set('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax', // Changed from 'strict' to allow cross-subdomain
+    domain: cookieDomain,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     path: '/'
   });

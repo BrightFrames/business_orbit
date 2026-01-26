@@ -28,6 +28,8 @@ interface ChapterMember {
   name: string
   email: string
   profile_photo_url?: string
+  orbit_points?: number
+  profession?: string
 }
 
 interface ChapterPost {
@@ -62,7 +64,7 @@ interface TopContributor {
   name: string
   role: string
   score: number
-  avatar: string
+  profile_photo_url?: string
 }
 
 export default function ChapterPage() {
@@ -73,6 +75,7 @@ export default function ChapterPage() {
   const [chapterMembers, setChapterMembers] = useState<ChapterMember[]>([])
   const [loading, setLoading] = useState(true)
   const [membersLoading, setMembersLoading] = useState(false)
+  const [topContributors, setTopContributors] = useState<TopContributor[]>([])
   // Chat state
   type ChatMessage = {
     id: string
@@ -210,7 +213,20 @@ export default function ChapterPage() {
       if (result.success && result.data && typeof result.data === 'object' && result.data !== null) {
         const data = result.data as any
         const members = data.members || []
+
         setChapterMembers(members)
+
+        // Calculate Top Contributors (Top 5 by orbit_points)
+        const top = members
+          .sort((a: any, b: any) => (b.orbit_points || 0) - (a.orbit_points || 0))
+          .slice(0, 5)
+          .map((m: any) => ({
+            name: m.name,
+            role: m.profession || 'Member',
+            score: m.orbit_points || 0,
+            profile_photo_url: m.profile_photo_url
+          }))
+        setTopContributors(top)
 
         // Update member count in chapterData to reflect actual number of members
         setChapterData(prev => {
@@ -579,8 +595,9 @@ export default function ChapterPage() {
       const isAvailable = await checkChatServer()
       if (!isAvailable) return
 
-      if (!socketRef.current) {
-        const s = io(CHAT_WS_URL, {
+      let s = socketRef.current
+      if (!s) {
+        s = io(CHAT_WS_URL, {
           autoConnect: true,
           withCredentials: true,
           timeout: 5000,
@@ -590,70 +607,89 @@ export default function ChapterPage() {
           rememberUpgrade: true
         })
         socketRef.current = s
+      }
 
-        s.off('connect').on('connect', () => {
-          setConnecting(false)
-          setConnectionError("")
-          // Join room on successful connect
-          const uid = user?.id ? String(user.id) : ''
-          if (uid && params.id) {
-            s.emit('joinRoom', { chapterId: String(params.id), userId: uid }, (res: any) => {
-              if (!res?.ok) {
-                console.error('joinRoom denied on connect:', res?.error)
-                setConnectionError(res?.error || 'Join denied')
-              } else {
-                setConnectionError("")
-              }
-            })
-          }
-        })
+      // Remove existing listeners to avoid duplicates if re-running
+      s.off('connect')
+      s.off('disconnect')
+      s.off('connect_error')
+      s.off('newMessage')
+      s.off('presence')
+      s.off('typing')
+      s.off('stopTyping')
 
-        s.off('disconnect').on('disconnect', () => {
-          setConnecting(true)
-        })
+      // Setup Listeners
+      s.on('connect', () => {
+        setConnecting(false)
+        setConnectionError("")
+        // Join room logic handles by the explicit call below or on-connect
+        joinChapterRoom()
+      })
 
-        s.off('connect_error').on('connect_error', (error: any) => {
-          setConnectionError('')
-          setConnecting(false)
-        })
+      s.on('disconnect', () => {
+        setConnecting(true)
+      })
 
-        // Message handling
-        s.off('newMessage').on('newMessage', (msg: ChatMessage) => {
-          if (String(msg.chapterId) === String(params.id)) {
-            setMessages(prev => {
-              const exists = prev.some(m => m.id === msg.id)
-              if (exists) return prev
-              const optimisticIndex = prev.findIndex(m =>
-                m.content === msg.content &&
-                m.senderId === msg.senderId &&
-                m.id.startsWith('tmp-')
-              )
-              if (optimisticIndex !== -1) {
-                const updated = [...prev]
-                updated[optimisticIndex] = msg
-                return updated
-              }
-              return [...prev, msg]
-            })
-          }
-        })
+      s.on('connect_error', (error: any) => {
+        setConnectionError('')
+        setConnecting(false)
+      })
 
-        s.off('presence').on('presence', (p: { count: number }) => {
-          setOnlineCount(p?.count || 0)
-        })
-
-        s.off('typing').on('typing', ({ userId }: { userId: string }) => {
-          if (String(userId) === String(user?.id)) return
-          setTypingUsers(prev => new Set([...prev, String(userId)]))
-        })
-
-        s.off('stopTyping').on('stopTyping', ({ userId }: { userId: string }) => {
-          setTypingUsers(prev => {
-            const newSet = new Set(prev)
-            newSet.delete(String(userId))
-            return newSet
+      s.on('newMessage', (msg: ChatMessage) => {
+        if (String(msg.chapterId) === String(params.id)) {
+          setMessages(prev => {
+            const exists = prev.some(m => m.id === msg.id)
+            if (exists) return prev
+            const optimisticIndex = prev.findIndex(m =>
+              m.content === msg.content &&
+              m.senderId === msg.senderId &&
+              m.id.startsWith('tmp-')
+            )
+            if (optimisticIndex !== -1) {
+              const updated = [...prev]
+              updated[optimisticIndex] = msg
+              return updated
+            }
+            return [...prev, msg]
           })
+        }
+      })
+
+      s.on('presence', (p: { count: number }) => {
+        setOnlineCount(p?.count || 0)
+      })
+
+      s.on('typing', ({ userId }: { userId: string }) => {
+        if (String(userId) === String(user?.id)) return
+        setTypingUsers(prev => new Set([...prev, String(userId)]))
+      })
+
+      s.on('stopTyping', ({ userId }: { userId: string }) => {
+        setTypingUsers(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(String(userId))
+          return newSet
         })
+      })
+
+      // Function to join the room
+      const joinChapterRoom = () => {
+        const uid = user?.id ? String(user.id) : ''
+        if (uid && params.id && s && s.connected) {
+          s.emit('joinRoom', { chapterId: String(params.id), userId: uid }, (res: any) => {
+            if (!res?.ok) {
+              console.error('joinRoom denied:', res?.error)
+              setConnectionError(res?.error || 'Join denied')
+            } else {
+              setConnectionError("")
+            }
+          })
+        }
+      }
+
+      // If already connected, join immediately
+      if (s.connected) {
+        joinChapterRoom()
       }
     }
 
@@ -1291,15 +1327,19 @@ export default function ChapterPage() {
                     <Badge variant="outline" className="w-5 h-5 sm:w-6 sm:h-6 p-0 flex items-center justify-center text-xs flex-shrink-0">
                       {index + 1}
                     </Badge>
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-muted rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0">
-                      {contributor.avatar}
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-muted rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 overflow-hidden">
+                      {contributor.profile_photo_url ? (
+                        <img src={contributor.profile_photo_url} alt={contributor.name} className="w-full h-full object-cover" />
+                      ) : (
+                        contributor.name.charAt(0).toUpperCase()
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs sm:text-sm font-medium truncate">{contributor.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{contributor.role}</p>
                     </div>
                     <Badge variant="secondary" className="text-xs flex-shrink-0">
-                      {contributor.score}
+                      {contributor.score} pts
                     </Badge>
                   </div>
                 ))}
