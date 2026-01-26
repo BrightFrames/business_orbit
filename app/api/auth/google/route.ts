@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   try {
     const clientId = process.env.GOOGLE_CLIENT_ID;
-    const redirectUri = `${process.env.CLIENT_URL || 'http://localhost:3000'}/api/auth/google/callback`;
+    // Use request origin for proper redirect in both dev and production
+    const origin = process.env.CLIENT_URL || process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+    const redirectUri = `${origin}/api/auth/google/callback`;
 
     if (!clientId) {
       return NextResponse.json(
