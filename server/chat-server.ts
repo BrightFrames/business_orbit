@@ -475,7 +475,7 @@ io.on('connection', async (socket) => {
   })
 })
 
-const basePort = Number(process.env.CHAT_SERVER_PORT || process.env.PORT || 3001)
+const basePort = Number(process.env.CHAT_SERVER_PORT || process.env.PORT || 4000)
 const strictPort = String(process.env.CHAT_SERVER_PORT_STRICT || '').toLowerCase() === 'true'
 
 function listenWithRetry(startPort: number, maxAttempts: number): void {
