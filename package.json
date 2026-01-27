@@ -281,12 +281,13 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.5.1",
+    "@types/node": "^24.10.9",
     "@types/nodemailer": "^7.0.5",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@types/react-modal": "^3.16.3",
     "concurrently": "^9.2.1",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "vitest": "^4.0.18"
   }
 }
