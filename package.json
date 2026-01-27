@@ -263,9 +263,10 @@
   "scripts": {
     "dev": "concurrently \"npm:next:dev\" \"npm:chat:dev\" --kill-others --names \"NEXT,CHAT\" -c \"bgBlue.bold,bgMagenta.bold\"",
     "next:dev": "next dev",
-    "build": "next build",
+    "build": "next build && npm run build:chat",
     "start": "next start",
     "chat:dev": "tsx server/chat-server.ts",
+    "build:chat": "esbuild server/chat-server.ts --bundle --platform=node --packages=external --outfile=server/dist/chat-server.js",
     "db:setup": "tsx lib/database/setup.ts",
     "db:seed": "tsx lib/database/seed.ts",
     "admin:setup": "tsx lib/database/setup-admin.ts",
