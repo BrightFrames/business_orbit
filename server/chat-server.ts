@@ -38,6 +38,10 @@ app.use(cors({ origin: true, credentials: true }))
 app.use(express.json())
 
 // Health endpoint
+app.get('/', (_req: any, res: any) => {
+  res.send('Chat Server is running on port ' + (process.env.CHAT_SERVER_PORT || 4000));
+})
+
 app.get('/health', (_req: any, res: any) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })

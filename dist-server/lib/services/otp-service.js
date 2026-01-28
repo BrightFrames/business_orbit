@@ -124,24 +124,24 @@ async function createOTP(email, purpose, userId, ipAddress) {
         return { success: false, error: 'Database not available' };
     }
     // Check rate limits
-    // const emailRateLimit = await checkRateLimit(email, 'email');
-    // if (!emailRateLimit.allowed) {
-    //     return {
-    //         success: false,
-    //         error: emailRateLimit.message || 'Rate limit exceeded',
-    //         rateLimitInfo: emailRateLimit
-    //     };
-    // }
-    // if (ipAddress) {
-    //     const ipRateLimit = await checkRateLimit(ipAddress, 'ip');
-    //     if (!ipRateLimit.allowed) {
-    //         return {
-    //             success: false,
-    //             error: ipRateLimit.message || 'Rate limit exceeded',
-    //             rateLimitInfo: ipRateLimit
-    //         };
-    //     }
-    // }
+    const emailRateLimit = await checkRateLimit(email, 'email');
+    if (!emailRateLimit.allowed) {
+        return {
+            success: false,
+            error: emailRateLimit.message || 'Rate limit exceeded',
+            rateLimitInfo: emailRateLimit
+        };
+    }
+    if (ipAddress) {
+        const ipRateLimit = await checkRateLimit(ipAddress, 'ip');
+        if (!ipRateLimit.allowed) {
+            return {
+                success: false,
+                error: ipRateLimit.message || 'Rate limit exceeded',
+                rateLimitInfo: ipRateLimit
+            };
+        }
+    }
     const client = await database_1.default.connect();
     try {
         await client.query('BEGIN');

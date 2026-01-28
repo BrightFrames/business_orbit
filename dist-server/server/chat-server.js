@@ -22,6 +22,9 @@ const app = (0, express_1.default)();
 app.use((0, cors_1.default)({ origin: true, credentials: true }));
 app.use(express_1.default.json());
 // Health endpoint
+app.get('/', (_req, res) => {
+    res.send('Chat Server is running on port ' + (process.env.CHAT_SERVER_PORT || 4000));
+});
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
