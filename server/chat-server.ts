@@ -477,34 +477,33 @@ io.on('connection', async (socket) => {
   })
 })
 
-const basePort = Number(process.env.CHAT_SERVER_PORT || process.env.PORT || 4000)
-const strictPort = String(process.env.CHAT_SERVER_PORT_STRICT || '').toLowerCase() === 'true'
+const PORT = process.env.CHAT_SERVER_PORT ? parseInt(process.env.CHAT_SERVER_PORT, 10) : 4000;
 
-function listenWithRetry(startPort: number, maxAttempts: number): void {
-  let attempt = 0
-  let currentPort = startPort
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Chat server running on port ${PORT}`);
+  // Signal readiness to PM2
+  if (process.send) process.send('ready');
+});
 
-  const tryListen = () => {
-    attempt += 1
-    server.once('listening', () => {
-      console.log(`Chat server listening on http://localhost:${currentPort}`)
-      process.env.CHAT_SERVER_PORT = String(currentPort)
-    })
-    server.once('error', (err: any) => {
-      if (err?.code === 'EADDRINUSE') {
-        if (strictPort) process.exit(1)
-        if (attempt >= maxAttempts) process.exit(1)
-        currentPort += 1
-        setTimeout(() => server.listen(currentPort), 50)
-      } else {
-        process.exit(1)
-      }
-    })
-    server.listen(currentPort)
-  }
-  tryListen()
-}
+// Graceful Shutdown for PM2
+const shutdown = (signal: string) => {
+  console.log(`${signal} received: closing HTTP server`);
+  server.close(() => {
+    console.log('HTTP server closed');
+    pool.end(() => {
+      console.log('Database pool closed');
+      process.exit(0);
+    });
+  });
+};
 
-listenWithRetry(basePort, 10)
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Fail fast on error
+server.on('error', (err: NodeJS.ErrnoException) => {
+  console.error('Server error:', err);
+  process.exit(1);
+});
 
 

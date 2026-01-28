@@ -1,0 +1,120 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ensurePool = void 0;
+const pg_1 = require("pg");
+const dotenv_1 = __importDefault(require("dotenv"));
+// Load env variables
+if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'production') {
+    dotenv_1.default.config({ path: '.env.local' });
+    dotenv_1.default.config({ path: '.env' });
+}
+// Only log database URL issues in development, not during build
+if (!process.env.DATABASE_URL && process.env.NODE_ENV === 'development') {
+    // DATABASE_URL not set warning
+}
+const databaseUrl = process.env.DATABASE_URL;
+const shouldUseSsl = Boolean(databaseUrl && (databaseUrl.includes('render.com') ||
+    databaseUrl.includes('neon.tech') ||
+    databaseUrl.includes('supabase') ||
+    databaseUrl.includes('railway') ||
+    /[?&]sslmode=require/.test(databaseUrl)));
+// Detect if we're in a Next.js build context - be VERY aggressive here
+// During build, Next.js analyzes routes which can trigger imports
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' ||
+    process.env.NEXT_PHASE === 'phase-development-build' ||
+    process.env.NEXT_PHASE?.includes('build') ||
+    process.env.npm_lifecycle_event === 'build' ||
+    process.env.NEXT_BUILD === '1' ||
+    // Check if we're running next build command (most reliable)
+    (typeof process !== 'undefined' && process.argv && (process.argv.some(arg => arg.includes('next') && arg.includes('build')) ||
+        process.argv.some(arg => arg === 'build') ||
+        process.argv.some(arg => arg.includes('next') && (arg.includes('build') || arg.includes('export'))))) ||
+    // CI environment during build (GitHub Actions sets this)
+    (process.env.CI === 'true' && process.env.npm_lifecycle_event === 'build');
+const isLocalDb = databaseUrl && (databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1'));
+// NEVER create pool during build time - this causes timeouts
+// Create pool only if DATABASE_URL is available AND we're not building
+// During build, pool must be null to prevent any connection attempts
+const pool = global.__PG_POOL__ ?? (!isBuildTime && databaseUrl ? new pg_1.Pool({
+    connectionString: databaseUrl,
+    // Only use SSL if explicitly required by URL (cloud providers) or if production AND NOT local
+    ssl: shouldUseSsl || (process.env.NODE_ENV === 'production' && !isLocalDb) ? { rejectUnauthorized: false } : false,
+    // Increased dev/prod limit to 10 to allow parallel queries (Bootstrap uses 4 alone)
+    max: 10,
+    application_name: 'business_orbit',
+    min: 0,
+    idleTimeoutMillis: 60000,
+    connectionTimeoutMillis: 60000, // Increased from 30s to 60s
+    maxUses: 7500,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 30000,
+}) : null);
+// Log build detection for debugging (only in non-production)
+if (process.env.NODE_ENV !== 'production' && isBuildTime) {
+    console.log('[Database] Build time detected - pool will be null');
+}
+if (!global.__PG_POOL__) {
+    global.__PG_POOL__ = pool;
+}
+if (pool) {
+    pool.on('error', (err) => {
+        // Database connection error handling
+    });
+}
+const testConnection = async (retries = process.env.NODE_ENV === 'production' ? 3 : 1) => {
+    if (!pool) {
+        return;
+    }
+    for (let i = 0; i < retries; i++) {
+        try {
+            const result = await pool.query('SELECT NOW() as current_time, version() as version');
+            return;
+        }
+        catch (err) {
+            if (i === retries - 1) {
+                // Do not exit the process in dev; let API routes handle runtime errors gracefully
+            }
+            else {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+    }
+};
+// NEVER test connection during build time - this is critical
+// Only test connection in development runtime, not during builds or CI
+const shouldTestConnection = !isBuildTime &&
+    process.env.NODE_ENV !== 'test' &&
+    process.env.VERCEL !== '1' &&
+    process.env.CI !== 'true' &&
+    process.env.NODE_ENV === 'development';
+if (shouldTestConnection) {
+    testConnection();
+}
+process.on('SIGINT', async () => {
+    if (pool) {
+        await pool.end();
+    }
+    process.exit(0);
+});
+process.on('SIGTERM', async () => {
+    if (pool) {
+        await pool.end();
+    }
+    process.exit(0);
+});
+// Helper function to ensure pool is available
+const ensurePool = () => {
+    // NEVER allow pool access during build
+    if (isBuildTime) {
+        throw new Error('Database pool cannot be accessed during build time. This is a build-time safety check.');
+    }
+    if (!pool) {
+        throw new Error('Database pool not initialized. Please check DATABASE_URL environment variable.');
+    }
+    return pool;
+};
+exports.ensurePool = ensurePool;
+exports.default = pool;

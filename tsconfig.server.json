@@ -1,0 +1,34 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "./*"
+            ]
+        },
+        "outDir": "./dist-server",
+        "rootDir": ".",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true
+    },
+    "include": [
+        "server/**/*",
+        "lib/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "**/*.test.ts",
+        "lib/services/otp-service.ts",
+        "lib/database/migrations/**/*",
+        "lib/database/run-*.ts",
+        "lib/database/setup*.ts",
+        "lib/database/seed.ts"
+    ]
+}
