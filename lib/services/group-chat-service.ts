@@ -1,5 +1,5 @@
-import pool from '@/lib/config/database';
-import { awardOrbitPoints } from '@/lib/utils/rewards';
+import pool from '../config/database';
+import { awardOrbitPoints } from '../utils/rewards';
 
 export interface GroupChatMessage {
   id: string;

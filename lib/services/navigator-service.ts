@@ -1,4 +1,4 @@
-import pool from '@/lib/config/database';
+import pool from '../config/database';
 
 export interface NavigatorSearchRequest {
   search_intent: string;

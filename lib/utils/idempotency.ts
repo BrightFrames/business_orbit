@@ -22,7 +22,7 @@
  * DELETE FROM idempotency_keys WHERE expires_at < NOW();
  */
 
-import pool from '@/lib/config/database';
+import pool from '../config/database';
 
 interface IdempotencyResult {
     isNew: boolean;

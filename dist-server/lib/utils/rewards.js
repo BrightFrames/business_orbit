@@ -7,7 +7,7 @@ exports.awardOrbitPoints = awardOrbitPoints;
 exports.checkAndAwardProfileCompletion = checkAndAwardProfileCompletion;
 exports.checkPairwiseLimit = checkPairwiseLimit;
 exports.validateCredibility = validateCredibility;
-const database_1 = __importDefault(require("@/lib/config/database"));
+const database_1 = __importDefault(require("../config/database"));
 // Simple in-memory cache for reward configurations
 // Map<action_type, { config: RewardConfig, expiresAt: number }>
 const configCache = new Map();

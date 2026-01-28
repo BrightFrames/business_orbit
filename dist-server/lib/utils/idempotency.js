@@ -31,7 +31,7 @@ exports.storeIdempotency = storeIdempotency;
 exports.generateIdempotencyKey = generateIdempotencyKey;
 exports.cleanupIdempotencyKeys = cleanupIdempotencyKeys;
 exports.withIdempotency = withIdempotency;
-const database_1 = __importDefault(require("@/lib/config/database"));
+const database_1 = __importDefault(require("../config/database"));
 /**
  * Check if a request with this idempotency key has already been processed
  *

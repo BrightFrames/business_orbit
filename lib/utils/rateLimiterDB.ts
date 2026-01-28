@@ -23,7 +23,7 @@
  * DELETE FROM rate_limits WHERE window_start < NOW() - INTERVAL '5 minutes';
  */
 
-import pool from '@/lib/config/database';
+import pool from '../config/database';
 
 export interface RateLimitConfig {
     /** Maximum requests allowed in window */

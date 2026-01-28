@@ -1,5 +1,5 @@
-import pool from '@/lib/config/database';
-import { compressMessage, decompressMessage } from '@/lib/utils/compression';
+import pool from '../config/database';
+import { compressMessage, decompressMessage } from '../utils/compression';
 
 export interface DirectMessage {
     id: string;

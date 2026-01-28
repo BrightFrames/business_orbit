@@ -4,8 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dmService = void 0;
-const database_1 = __importDefault(require("@/lib/config/database"));
-const compression_1 = require("@/lib/utils/compression");
+const database_1 = __importDefault(require("../config/database"));
+const compression_1 = require("../utils/compression");
 class DMService {
     /**
      * Get or create a conversation between two users

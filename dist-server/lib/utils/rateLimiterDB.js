@@ -31,7 +31,7 @@ exports.DB_RATE_LIMITS = void 0;
 exports.checkRateLimitDB = checkRateLimitDB;
 exports.buildDBRateLimitKey = buildDBRateLimitKey;
 exports.cleanupRateLimits = cleanupRateLimits;
-const database_1 = __importDefault(require("@/lib/config/database"));
+const database_1 = __importDefault(require("../config/database"));
 /**
  * Check rate limit using database storage (serverless-safe)
  *

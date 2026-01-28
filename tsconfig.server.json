@@ -3,12 +3,6 @@
         "target": "ES2020",
         "module": "CommonJS",
         "moduleResolution": "node",
-        "baseUrl": ".",
-        "paths": {
-            "@/*": [
-                "./*"
-            ]
-        },
         "outDir": "./dist-server",
         "rootDir": ".",
         "strict": true,
