@@ -28,8 +28,19 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     const pathname = usePathname();
 
     // URL configuration
-    const CHAT_HTTP_URL = process.env.NEXT_PUBLIC_CHAT_SOCKET_URL || 'http://localhost:4000';
-    const CHAT_WS_URL = CHAT_HTTP_URL.replace(/^http/, 'ws');
+    // URL configuration
+    const [chatUrl, setChatUrl] = useState(process.env.NEXT_PUBLIC_CHAT_SOCKET_URL || 'http://localhost:4000');
+
+    useEffect(() => {
+        // Fallback to localhost if we are in dev/local environment but env var might vary
+        if (typeof window !== 'undefined' && window.location.hostname === 'localhost' && !process.env.NEXT_PUBLIC_CHAT_SOCKET_URL) {
+            setChatUrl('http://localhost:4000');
+        } else if (process.env.NEXT_PUBLIC_CHAT_SOCKET_URL) {
+            setChatUrl(process.env.NEXT_PUBLIC_CHAT_SOCKET_URL);
+        }
+    }, []);
+
+    const CHAT_WS_URL = chatUrl.replace(/^http/, 'ws');
 
     // Use ref to keep track of socket instance without triggering re-renders
     const socketRef = useRef<Socket | null>(null);
@@ -46,85 +57,99 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             return;
         }
 
-        if (!socketRef.current) {
-            const initializeSocket = async () => {
-                try {
-                    console.log('Fetching auth token for socket...');
-                    // Fetch token from API since we can't read HttpOnly cookies
-                    const res = await fetch('/api/auth/token');
-                    const data = await res.json();
-                    const token = data.token;
-
-                    if (!token) {
-                        console.error('No token found, skipping socket connection');
-                        return;
-                    }
-
-                    console.log('Initializing socket connection with token...');
-                    const s = io(CHAT_WS_URL, {
-                        withCredentials: true,
-                        transports: ['polling', 'websocket'],
-                        autoConnect: true,
-                        reconnection: true,
-                        reconnectionAttempts: 5,
-                        reconnectionDelay: 1000,
-                        auth: {
-                            token: token
-                        }
-                    });
-
-                    s.on('connect', () => {
-                        console.log('Socket connected globally:', s.id);
-                        setIsConnected(true);
-                    });
-
-                    s.on('connect_error', (err) => {
-                        console.error('Socket connection error:', err.message);
-                        setIsConnected(false);
-                    });
-
-                    s.on('disconnect', (reason) => {
-                        console.log('Socket disconnected globally:', reason);
-                        setIsConnected(false);
-                        if (reason === 'io server disconnect') {
-                            s.connect();
-                        }
-                    });
-
-                    s.on('receive_message', (msg: any) => {
-                        console.log('Global socket received message', msg);
-                        fetchUnreadMessageCount();
-                    });
-
-                    s.on('new_notification', (data: any) => {
-                        console.log('Global socket received notification', data);
-                        if (data && data.title && data.message) {
-                            const isMessagesPage = window.location.pathname.startsWith('/product/messages');
-                            if (!document.hidden && !isMessagesPage) {
-                                toast(data.message, {
-                                    icon: '🔔',
-                                    duration: 4000
-                                });
-                            }
-                        }
-                    });
-
-                    socketRef.current = s;
-                    setSocket(s);
-                } catch (e) {
-                    console.error('Failed to initialize socket:', e);
-                }
-            };
-
-            initializeSocket();
+        // If URL changed and we have a socket, disconnect it to force reconnection
+        if (socketRef.current) {
+            // We can check if the socket io uri matches. But simplest is to just disconnect.
+            // However, to prevent unnecessary reconnects, we trust the dependency array.
+            // If we are here, it means user.id or CHAT_WS_URL changed.
+            console.log('Socket config changed, reconnecting...');
+            socketRef.current.disconnect();
+            socketRef.current = null;
+            setSocket(null);
+            setIsConnected(false);
         }
 
-        // Cleanup on unmount or user change
+        const initializeSocket = async () => {
+            try {
+                console.log('Fetching auth token for socket...');
+                // Fetch token from API since we can't read HttpOnly cookies
+                const res = await fetch('/api/auth/token');
+                if (!res.ok) throw new Error('Failed to fetch token');
+                const data = await res.json();
+                const token = data.token;
+
+                if (!token) {
+                    console.error('No token found, skipping socket connection');
+                    return;
+                }
+
+                console.log('Initializing socket connection to', CHAT_WS_URL);
+                const s = io(CHAT_WS_URL, {
+                    withCredentials: true,
+                    transports: ['polling', 'websocket'],
+                    autoConnect: true,
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
+                    auth: {
+                        token: token
+                    }
+                });
+
+                s.on('connect', () => {
+                    console.log('Socket connected globally:', s.id);
+                    setIsConnected(true);
+                });
+
+                s.on('connect_error', (err) => {
+                    console.error('Socket connection error:', err.message);
+                    setIsConnected(false);
+                });
+
+                s.on('disconnect', (reason) => {
+                    console.log('Socket disconnected globally:', reason);
+                    setIsConnected(false);
+                    if (reason === 'io server disconnect') {
+                        s.connect();
+                    }
+                });
+
+                s.on('receive_message', (msg: any) => {
+                    console.log('Global socket received message', msg);
+                    fetchUnreadMessageCount();
+                });
+
+                s.on('new_notification', (data: any) => {
+                    console.log('Global socket received notification', data);
+                    if (data && data.title && data.message) {
+                        const isMessagesPage = window.location.pathname.startsWith('/product/messages');
+                        if (!document.hidden && !isMessagesPage) {
+                            toast(data.message, {
+                                icon: '🔔',
+                                duration: 4000
+                            });
+                        }
+                    }
+                });
+
+                socketRef.current = s;
+                setSocket(s);
+            } catch (e) {
+                console.error('Failed to initialize socket:', e);
+            }
+        };
+
+        initializeSocket();
+
+        // Cleanup on unmount or dep change
         return () => {
-            // We don't want to disconnect on every render, but only when user changes to null
-            // However, useEffect cleanup runs on dependency change.
-            // If user changes (e.g. update profile), we don't want to disconnect.
-            // We only want to disconnect if user becomes null (handled at top) or component unmounts.
+            if (socketRef.current) {
+                console.log('Cleaning up socket connection');
+                socketRef.current.disconnect();
+                socketRef.current = null;
+                setSocket(null);
+                setIsConnected(false);
+            }
         };
     }, [user?.id, CHAT_WS_URL]); // Only re-run if user ID changes, not just any user object change
 
