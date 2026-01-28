@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://businessorbit.org
+
+# Sitemaps
+Sitemap: https://businessorbit.org/sitemap.xml

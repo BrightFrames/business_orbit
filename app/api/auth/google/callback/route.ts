@@ -136,8 +136,10 @@ export async function GET(request: NextRequest) {
       redirectUrl = '/product/invite';
     }
 
-    // Create response with redirect
-    const response = NextResponse.redirect(new URL(redirectUrl, request.url));
+    // Create response with redirect using the correct base URL
+    const baseUrl = process.env.CLIENT_URL || process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+    const finalUrl = new URL(redirectUrl, baseUrl).toString();
+    const response = NextResponse.redirect(finalUrl);
 
     // Set cookie
     setTokenCookie(response, token);

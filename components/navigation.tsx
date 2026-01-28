@@ -1,8 +1,8 @@
 "use client"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Search, Home, Compass, Users, Calendar, User, Settings, MessageSquare, Briefcase } from "lucide-react"
-import { useState } from "react"
+import { Bell, Home, Briefcase, Calendar as CalendarIcon, Users, MessageSquare, Settings, Crown, User, LogOut, Compass, Search } from 'lucide-react'
+import { useState, useRef, useEffect } from "react"
 import SearchModal from "@/components/SearchModal"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -11,9 +11,52 @@ import { NotificationsPopover } from "@/components/NotificationsPopover"
 import { useAuth } from "@/contexts/AuthContext"
 
 export function Navigation() {
-  const { user, unreadMessageCount } = useAuth()
+  const { user, unreadMessageCount, logout } = useAuth()
   const pathname = usePathname()
   const [searchOpen, setSearchOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const settingsRef = useRef<HTMLDivElement>(null)
+
+  // Click outside handler for settings menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setSettingsOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  const handleUpgrade = async () => {
+    try {
+      const res = await fetch('/api/payments/phonepe/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: 'premium',
+          amount: 999
+        })
+      })
+
+      const data = await res.json()
+      if (data.success && data.redirectUrl) {
+        toast.success("Redirecting to payment...")
+        window.location.href = data.redirectUrl
+      } else {
+        console.error("Payment initiation failed:", data);
+        const errorMessage = typeof data.details === 'object'
+          ? JSON.stringify(data.details)
+          : (data.details || data.error || "Failed to initiate payment");
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Upgrade error:", error)
+      toast.error("Something went wrong. Check console.")
+    }
+  }
 
   const tabs = [
     { name: "Feed", href: "/product/feed", icon: Home },
@@ -21,7 +64,7 @@ export function Navigation() {
     { name: "Chapters", href: "/product/chapters", icon: Users },
     { name: "Groups", href: "/product/groups", icon: Users },
     { name: "Consultation", href: "/product/consultations", icon: Briefcase },
-    { name: "Events", href: "/product/events", icon: Calendar },
+    { name: "Events", href: "/product/events", icon: CalendarIcon },
     { name: "Messages", href: "/product/messages", icon: MessageSquare },
     { name: "Profile", href: "/product/profile", icon: User },
   ]
@@ -76,30 +119,82 @@ export function Navigation() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="relative group hover:bg-accent/50 cursor-pointer"
+                  className="relative group hover:bg-accent/50 cursor-pointer text-muted-foreground"
                 >
-                  <div className="w-7 h-7 rounded-full border-2 border-foreground flex items-center justify-center transition-all group-hover:scale-105">
-                    <div className="w-3 h-3 bg-foreground rounded-full"></div>
+                  <div className="w-7 h-7 rounded-full border-2 border-muted-foreground flex items-center justify-center transition-all group-hover:scale-105">
+                    <span className="font-bold text-[10px]">OP</span>
                   </div>
                   <span className="ml-2 text-sm font-semibold">{user?.rewardScore || 0}</span>
                 </Button>
               </Link>
 
+              <Button
+                size="sm"
+                onClick={handleUpgrade}
+                className="hidden sm:flex bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white border-0 shadow-md group transition-all duration-300 hover:shadow-lg hover:scale-105"
+              >
+                <Crown className="w-4 h-4 mr-2 fill-current" />
+                <span className="font-semibold">Upgrade</span>
+              </Button>
+
               <NotificationsPopover />
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="relative group cursor-pointer hover:bg-accent/50"
-                onClick={() => {
-                  toast("This feature is enabled in Phase2/Version2", {
-                    icon: "⚙️",
-                    duration: 3000,
-                  })
-                }}
-              >
-                <Settings className="w-5 h-5" />
-              </Button>
+              <div className="relative" ref={settingsRef}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`relative group cursor-pointer hover:bg-accent/50 ${settingsOpen ? 'bg-accent/50' : ''}`}
+                  onClick={() => setSettingsOpen(!settingsOpen)}
+                >
+                  <Settings className={`w-5 h-5 transition-transform duration-300 ${settingsOpen ? 'rotate-90' : 'group-hover:rotate-45'}`} />
+                </Button>
+
+                {settingsOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-background border rounded-lg shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
+                    <div className="p-3 border-b bg-muted/30">
+                      <p className="font-semibold text-sm truncate">{user?.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                    </div>
+                    <div className="p-1">
+                      <Link href="/product/profile" onClick={() => setSettingsOpen(false)}>
+                        <Button variant="ghost" size="sm" className="w-full justify-start text-sm font-normal mb-1">
+                          <User className="w-4 h-4 mr-2 text-muted-foreground" />
+                          Profile
+                        </Button>
+                      </Link>
+                      <Link href="/product/settings" onClick={() => setSettingsOpen(false)}>
+                        <Button variant="ghost" size="sm" className="w-full justify-start text-sm font-normal mb-1">
+                          <Settings className="w-4 h-4 mr-2 text-muted-foreground" />
+                          Settings
+                        </Button>
+                      </Link>
+                      <Link href="/product/consultations/my" onClick={() => setSettingsOpen(false)}>
+                        <Button variant="ghost" size="sm" className="w-full justify-start text-sm font-normal mb-1">
+                          <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                          My Bookings
+                        </Button>
+                      </Link>
+                      <Button variant="ghost" size="sm" className="w-full justify-start text-sm font-normal mb-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50" onClick={handleUpgrade}>
+                        <Crown className="w-4 h-4 mr-2" />
+                        Upgrade to Premium
+                      </Button>
+                      <div className="h-px bg-border my-1" />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start text-sm font-normal text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        onClick={() => {
+                          setSettingsOpen(false)
+                          logout()
+                        }}
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Log out
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

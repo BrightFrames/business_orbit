@@ -25,6 +25,7 @@ export class PhonePeService {
      * Format: SHA256(base64Body + "/pg/v1/pay" + saltKey) + "###" + saltIndex
      */
     static generateChecksum(base64Body: string, endpoint: string = '/pg/v1/pay'): string {
+        console.log('Generating checksum for endpoint:', endpoint);
         const dataToHash = base64Body + endpoint + this.saltKey;
         const hash = crypto.createHash('sha256').update(dataToHash).digest('hex');
         return `${hash}###${this.saltIndex}`;
@@ -54,7 +55,13 @@ export class PhonePeService {
         };
 
         const base64Body = Buffer.from(JSON.stringify(payload)).toString('base64');
-        const checksum = this.generateChecksum(base64Body);
+
+        // Dynamically extract endpoint from the full API URL to ensure checksum matches
+        // e.g. https://api.phonepe.com/apis/hermes/pg/v1/pay -> /apis/hermes/pg/v1/pay
+        const urlObj = new URL(this.apiUrl);
+        const endpoint = urlObj.pathname;
+
+        const checksum = this.generateChecksum(base64Body, endpoint);
 
         return {
             base64Body,

@@ -72,9 +72,12 @@ export function BookingModal({ expert, isOpen, onClose, onSuccess }: BookingModa
                         toast.success(`Booking created! Redirecting to payment...`)
                         window.location.href = paymentData.redirectUrl
                     } else {
-                        toast.error('Booking created but payment initiation failed. Please check your bookings.')
-                        onSuccess()
-                        onClose()
+                        console.error('Payment initiation failed:', paymentData)
+                        const errorMessage = typeof paymentData.details === 'object'
+                            ? JSON.stringify(paymentData.details)
+                            : (paymentData.details || paymentData.error || 'Payment initiation failed');
+                        toast.error(errorMessage)
+                        // Do not close so user can try again or see error
                     }
                 } catch (paymentError) {
                     console.error("Payment error", paymentError)

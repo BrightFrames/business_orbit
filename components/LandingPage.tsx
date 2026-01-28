@@ -46,9 +46,9 @@ export default function LandingPage() {
                     </div>
 
                     <h1 className="text-5xl sm:text-7xl md:text-8xl font-bold tracking-tight text-black leading-[1.05] animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
-                        Networking that <br className="hidden sm:block" />
+                        Professional <br className="hidden sm:block" />
                         <span className="relative inline-block">
-                            feels human.
+                            Networking Reimagined.
                             <svg className="absolute w-full h-4 -bottom-2 left-0 text-yellow-400 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none">
                                 <path d="M0 5 Q 25 0 50 5 T 100 5" stroke="currentColor" strokeWidth="6" fill="none" strokeLinecap="round" />
                             </svg>

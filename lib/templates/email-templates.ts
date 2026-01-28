@@ -269,3 +269,59 @@ export function emailVerifiedTemplate(userName: string): { html: string; text: s
         text: `Hi ${firstName},\n\nYour email has been successfully verified!\n\nExplore: https://businessorbit.org/product/feed\n\n${BRAND_NAME}`
     };
 }
+
+export function bookingConfirmationTemplate(userName: string, otherPartyName: string, date: string, type: 'Client' | 'Expert') {
+    const isClient = type === 'Client';
+    const title = isClient ? 'Consultation Confirmed' : 'New Consultation Booking';
+    const message = isClient
+        ? `Your consultation with <strong>${otherPartyName}</strong> has been successfully booked.`
+        : `You have a new consultation booked with <strong>${otherPartyName}</strong>.`;
+
+    const content = `
+        <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: #111827;">${title}</h2>
+        <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #374151;">Hello ${userName},</p>
+        <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #374151;">${message}</p>
+        <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0 0 8px; font-size: 16px; color: #374151;"><strong>Date & Time:</strong> ${date}</p>
+            <p style="margin: 0; font-size: 16px; color: #374151;">
+                <strong>Meeting Link:</strong> <a href="#" style="color: ${BRAND_COLOR};">Join Meeting</a><br>
+                <span style="font-size: 14px; color: #6b7280;">(Link will be active 10 mins before time)</span>
+            </p>
+        </div>
+        <p style="margin: 24px 0 0; font-size: 14px; text-align: center; color: #6b7280;">Please log in to your dashboard to view more details.</p>
+    `;
+
+    return {
+        subject: `${title} - ${BRAND_NAME}`,
+        html: wrapInTemplate(content, `${title} - ${date}`),
+        text: `Hello ${userName}, ${message} Date: ${date}. Check your dashboard for details.`
+    };
+}
+
+export function premiumWelcomeTemplate(userName: string) {
+    const firstName = userName.split(' ')[0] || 'there';
+
+    const content = `
+        <h2 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: #d97706;">Welcome to Premium! 🌟</h2>
+        <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #374151;">Hello ${firstName},</p>
+        <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #374151;">
+            Thank you for upgrading to Business Orbit Premium. You've just unlocked a suite of powerful tools to accelerate your growth.
+        </p>
+        <div style="margin: 24px 0;">
+            <h3 style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 12px;">Your exclusive benefits:</h3>
+            <ul style="margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.8; color: #374151;">
+                <li>Exclusive access to top industry experts</li>
+                <li>Priority support for all your queries</li>
+                <li>Advanced analytics for your profile</li>
+                <li>Premium badge on your profile</li>
+            </ul>
+        </div>
+        <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #374151;">Enjoy your new features and keep growing!</p>
+    `;
+
+    return {
+        subject: `Welcome to Premium - ${BRAND_NAME}`,
+        html: wrapInTemplate(content, 'Welcome to Premium! You now have access to exclusive features.'),
+        text: `Hello ${firstName}, Welcome to Premium! You now have access to exclusive features.`
+    };
+}
