@@ -5,6 +5,12 @@
         "moduleResolution": "node",
         "outDir": "./dist-server",
         "rootDir": ".",
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "./*"
+            ]
+        },
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,

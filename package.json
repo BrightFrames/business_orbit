@@ -266,7 +266,7 @@
     "build": "next build && npm run build:chat",
     "start": "next start",
     "chat:dev": "tsx server/chat-server.ts",
-    "build:chat": "tsc -p tsconfig.server.json",
+    "build:chat": "tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json",
     "start:chat": "node dist-server/server/chat-server.js",
     "db:setup": "tsx lib/database/setup.ts",
     "db:seed": "tsx lib/database/seed.ts",
@@ -293,6 +293,7 @@
     "@types/react-modal": "^3.16.3",
     "concurrently": "^9.2.1",
     "next-sitemap": "^4.2.3",
+    "tsc-alias": "^1.8.10",
     "ts-node": "^10.9.2"
   }
 }
